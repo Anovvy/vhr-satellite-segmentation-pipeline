@@ -2,15 +2,7 @@
 
 Deep-learning segmentation of selected urban land-cover classes from 30 cm very-high-resolution RGB satellite imagery using U-Net, DeepLabV3+, and SegFormer.
 
-<!--
-HERO GIF SLOT
-Place the final animation at: docs/assets/hero_before_after.gif
-Recommended content: a horizontal sliding comparison between satellite imagery and the classified result.
-Replace this comment with:
-<p align="center">
-  <img src="docs/assets/hero_before_after.gif" alt="Satellite image and land-cover classification comparison" width="100%">
-</p>
--->
+<img width="639" height="360" alt="VHR_edit-ezgif com-video-to-gif-converter" src="https://github.com/user-attachments/assets/5be58630-8c42-4218-b8da-5e2d6a586401" />
 
 ## Description
 
