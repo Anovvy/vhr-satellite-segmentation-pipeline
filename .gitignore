@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Editors and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Generated pipeline outputs
+outputs/
+
+# Model checkpoints (publish through Releases instead)
+weights/*.pth
+weights/*.pt
+weights/*.ckpt
+
+# Private/proprietary working data
+raw_data/
+private_data/
+*.ecw
+
+# Training artifacts
+checkpoints/
+runs/
+wandb/
+
+# Temporary geospatial sidecars
+*.aux.xml
+*.ovr
+

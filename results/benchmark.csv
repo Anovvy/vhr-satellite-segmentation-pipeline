@@ -1,0 +1,4 @@
+model,backbone,overall_accuracy,mean_iou,macro_precision,macro_recall,macro_f1,evaluation_scope,figure
+U-Net,ResNet34,0.6565,0.5057,0.7113,0.6302,0.6608,Private research scene; reference classes 1-4,results/figures/unet_evaluation_research.png
+DeepLabV3+,ResNet50,0.6,0.4245,0.6302,0.5623,0.5834,Private research scene; reference classes 1-4,results/figures/deeplabv3plus_evaluation_research.png
+SegFormer,MiT-B0,0.712,0.5603,0.7488,0.6798,0.7108,Private research scene; reference classes 1-4,results/figures/segformer_evaluation_research.png
