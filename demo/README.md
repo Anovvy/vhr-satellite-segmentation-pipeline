@@ -18,7 +18,7 @@ The raster must contain red, green, and blue as the first three bands. The vecto
 | 0 | Unclassified / Other |
 | 1 | Residential / Mixed-use Built-up |
 | 2 | Non-residential Built-up |
-| 3 | Grassland |
+| 3 | Grassland / Yard|
 | 4 | Urban forest, green belt, and urban park |
 
 Class `0` is a semantic catch-all class, not background. It includes water bodies, plantations, open land, and other objects outside classes `1–4`. Class `1` covers built-up land used as housing or residential mixed use. Class `2` covers non-housing built-up land such as hospitals, government offices, and schools.
