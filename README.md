@@ -15,8 +15,6 @@ This project maps four target classes from an RGB satellite image:
 
 Every remaining object is assigned to `Unclassified / Other`. Examples include water bodies, plantations, open land, and other objects outside the four target classes. Class `0` is therefore a valid semantic class, not a training background label.
 
-> **Temporary reproducibility notice:** the current repository snapshot cannot complete the demo because the redistributable demo imagery and reference layer are still awaiting upload by the author. All commands and paths already follow the intended final demo package.
-
 ## Intended Use and Geographic Limitation
 
 The models were trained using dense residential landscapes in Jakarta. Building density, roof materials, street patterns, vegetation structure, illumination, season, sensor characteristics, and image resolution can differ substantially in another location.
@@ -60,7 +58,7 @@ Prediction-only mode creates a classified-map PNG. Evaluation mode creates groun
 | 0 | Unclassified / Other | Valid semantic catch-all for objects outside classes 1–4, including water bodies, plantations, open land, and other unsupported objects |
 | 1 | Residential / Mixed-use Built-up | Built-up land used primarily for housing or residential activity, including mixed residential use |
 | 2 | Non-residential Built-up | Built-up land not used as housing, such as hospitals, government offices, schools, and other institutional or service buildings |
-| 3 | Grassland | Grass-covered land and similar low vegetation |
+| 3 | Grassland / Yard | Grass-covered land and similar low vegetation |
 | 4 | Urban Forest / Green Belt / Urban Park | Tree-dominated urban green areas, green corridors, and city parks |
 
 The model contains five output channels. Four thematic targets use IDs `1–4`, while class `0` collects all remaining land-cover objects.
