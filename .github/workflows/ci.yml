@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install Ruff
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ruff
+
+      - name: Run Ruff Linter
+        run: ruff check src/ scripts/ tests/
+
+      - name: Run Ruff Formatter Check
+        run: ruff format --check src/ scripts/ tests/
+
+  pytest-geospatial:
+    name: Geospatial Pytest (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11"]
+      fail-fast: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -r requirements/requirements-dev.txt -r requirements/requirements-cpu.txt
+
+      - name: Run Pytest
+        run: python -m pytest -ra -q tests/
+
+  docker-cpu-smoke:
+    name: Docker CPU Build & Smoke Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker CPU Image
+        run: |
+          docker build -f docker/Dockerfile.cpu -t vhr-seg:ci-smoke .
+
+      - name: Smoke Test CLI Help
+        run: |
+          docker run --rm vhr-seg:ci-smoke --help
+
+      - name: Smoke Test Environment Doctor
+        run: |
+          docker run --rm vhr-seg:ci-smoke --doctor
