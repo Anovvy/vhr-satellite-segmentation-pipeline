@@ -1,192 +1,78 @@
-# Docker Execution Guide
+# Docker Container Architecture & Operations
 
-This document describes how to build and run containerized batch inference for the VHR Satellite Segmentation Pipeline using Docker for both CPU and NVIDIA GPU environments.
-
----
-
-## 1. Container Architecture
-
-The containerized system enforces strict separation of concerns:
-- **Inference Engine**: Encapsulated within the container image (OS, Python 3.11, PyTorch, GDAL/Rasterio, Transformers, SMP).
-- **Satellite Rasters & Labels**: Mounted **read-only** (`:ro`) at `/data`.
-- **Model Checkpoints**: Mounted **read-only** (`:ro`) at `/models`. Checkpoint binaries are not bundled into the image to maintain lightweight OCI artifacts.
-- **Output Artifacts**: Mounted **read-write** at `/outputs`. All generated GeoTIFFs, GeoPackages, metrics, figures, and provenance manifests persist directly on the host.
-- **Security**: The container runs under a non-root `appuser` (UID 1000).
+This document details the containerized architecture, security model, volume mount specifications, and GPU acceleration setup for the VHR Satellite Segmentation Pipeline.
 
 ---
 
-## 2. Recommended: Running via Docker Compose or Helper Scripts
+## 1. Container Isolation & Volume Mount Model
 
-The easiest and officially recommended way to interact with the containerized pipeline is using `docker compose` or the cross-platform runner scripts.
+To guarantee reproducible, stateless execution without bundling heavy binary data into OCI images, the runtime strictly decouples code, models, and data through container volume mounts:
 
-### Using Cross-Platform Helper Scripts
-The repository includes automated runner scripts that handle image building, volume mounting, and command routing:
-
-- **Linux / macOS**: `./run.sh [options]`
-- **Windows PowerShell**: `.\run.ps1 [options]`
-
-#### Check System & Weight Manifest Health:
-```bash
-./run.sh --doctor        # Linux / macOS
-.\run.ps1 -Doctor        # Windows PowerShell
+```text
+[Host Filesystem]                             [Container Filesystem]
+./demo/ (or custom data)  ==== (ro mount) ====>  /data/
+./weights/                ==== (ro mount) ====>  /models/ (or /app/weights/)
+./outputs/                ==== (rw mount) ====>  /outputs/ (or /app/outputs/)
 ```
 
-#### Run SegFormer Demo:
-```bash
-./run.sh --model segformer --demo        # Linux / macOS
-.\run.ps1 -Model segformer -Demo        # Windows PowerShell
+| Mount Point | Access | Description |
+|---|---|---|
+| `/data` | Read-Only (`:ro`) | Input satellite rasters (GeoTIFF) and ground-truth vectors (GeoPackage/Shapefile). |
+| `/models` | Read-Only (`:ro`) | Checkpoint binary weights (`.pth`). Images remain lightweight and vendor-agnostic. |
+| `/outputs` | Read-Write (`:rw`) | Destination for generated GeoTIFFs, GeoPackages, metrics, figures, and provenance manifests. |
+
+### Security Model
+The container executes under a dedicated non-root user `appuser` (UID 1000, GID 1000) with least-privilege principles to prevent privilege escalation on the host system.
+
+---
+
+## 2. Docker Compose Services
+
+The project defines 4 specialized services in [`docker-compose.yml`](../docker-compose.yml):
+
+```yaml
+services:
+  cpu:     # Default CPU inference runtime (Python 3.11, PyTorch CPU, GDAL/Rasterio)
+  gpu:     # CUDA 12.1 accelerated inference runtime (NVIDIA Container Toolkit required)
+  doctor:  # Offline system & weights integrity diagnostic runner
+  test:    # Automated geospatial pytest runner (29 tests)
 ```
 
-#### Run All Geospatial Unit Tests:
+### Quick Commands:
 ```bash
-./run.sh --test          # Linux / macOS
-.\run.ps1 -Test          # Windows PowerShell
-```
-
-### Using Docker Compose Directly
-
-```bash
-# Run doctor check
-docker compose run --rm doctor
-
-# Run test suite
-docker compose run --rm test
-
-# Run CPU inference demo
-docker compose run --rm cpu --model segformer --demo
-
-# Run GPU inference demo (requires NVIDIA Container Toolkit)
-docker compose run --rm gpu --model segformer --demo --device cuda
+docker compose run --rm doctor                                   # Diagnostics
+docker compose run --rm test                                     # Test suite
+docker compose run --rm cpu --model segformer --demo             # CPU inference
+docker compose run --rm gpu --model segformer --demo --device cuda # GPU inference
 ```
 
 ---
 
-## 3. Building the Images Manually
+## 3. NVIDIA GPU Setup (CUDA 12.1)
 
-If not using Docker Compose, you can build images directly:
+To run GPU-accelerated inference:
 
-### CPU Image
+### On Linux
+1. Install NVIDIA drivers (`>= 525.60.13`).
+2. Install the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
+3. Restart Docker daemon: `sudo systemctl restart docker`.
+4. Run: `./run.sh --gpu --model segformer --demo --device cuda`.
+
+### On Windows (WSL2)
+1. Install the latest NVIDIA Windows Driver.
+2. Ensure Docker Desktop has **Use the WSL 2 based engine** enabled under Settings > General.
+3. Run: `.\run.ps1 -Gpu -Model segformer -Demo -Device cuda`.
+
+---
+
+## 4. Manual Image Building
+
+If building outside Docker Compose:
+
 ```bash
+# Build CPU Image
 docker build -f docker/Dockerfile.cpu -t vhr-seg:dev-cpu .
-```
 
-### GPU Image (CUDA 12.1)
-```bash
+# Build GPU Image (CUDA 12.1)
 docker build -f docker/Dockerfile.gpu -t vhr-seg:dev-gpu .
 ```
-
----
-
-## 4. Running Environment Doctor via Direct Docker Run
-
-### Linux / macOS (Bash)
-```bash
-docker run --rm \
-  -v "$PWD/weights:/models:ro" \
-  vhr-seg:dev-cpu \
-  --doctor --weights-dir /models
-```
-
-### Windows (PowerShell)
-```powershell
-docker run --rm `
-  -v "${PWD}/weights:/models:ro" `
-  vhr-seg:dev-cpu `
-  --doctor --weights-dir /models
-```
-
----
-
-## 5. Running Inference via Direct Docker Run
-
-### CPU Inference Example
-
-#### Linux / macOS (Bash)
-```bash
-docker run --rm \
-  -v "$PWD/demo:/data:ro" \
-  -v "$PWD/weights:/models:ro" \
-  -v "$PWD/outputs:/outputs" \
-  vhr-seg:dev-cpu \
-  --model segformer \
-  --raster /data/imagery_demo.tif \
-  --weights-dir /models \
-  --output-dir /outputs \
-  --device cpu \
-  --skip-evaluation
-```
-
-#### Windows (PowerShell)
-```powershell
-docker run --rm `
-  -v "${PWD}/demo:/data:ro" `
-  -v "${PWD}/weights:/models:ro" `
-  -v "${PWD}/outputs:/outputs" `
-  vhr-seg:dev-cpu `
-  --model segformer `
-  --raster /data/imagery_demo.tif `
-  --weights-dir /models `
-  --output-dir /outputs `
-  --device cpu `
-  --skip-evaluation
-```
-
-### GPU Inference Example (Requires NVIDIA Container Toolkit / WSL2)
-
-#### Linux (Bash)
-```bash
-docker run --rm --gpus all \
-  -v "$PWD/demo:/data:ro" \
-  -v "$PWD/weights:/models:ro" \
-  -v "$PWD/outputs:/outputs" \
-  vhr-seg:dev-gpu \
-  --model segformer \
-  --raster /data/imagery_demo.tif \
-  --weights-dir /models \
-  --output-dir /outputs \
-  --device cuda \
-  --skip-evaluation
-```
-
-#### Windows PowerShell (WSL2 with NVIDIA Driver)
-```powershell
-docker run --rm --gpus all `
-  -v "${PWD}/demo:/data:ro" `
-  -v "${PWD}/weights:/models:ro" `
-  -v "${PWD}/outputs:/outputs" `
-  vhr-seg:dev-gpu `
-  --model segformer `
-  --raster /data/imagery_demo.tif `
-  --weights-dir /models `
-  --output-dir /outputs `
-  --device cuda `
-  --skip-evaluation
-```
-
----
-
-## 6. With Reference Evaluation
-
-To compute accuracy, IoU, confusion matrix, and compatibility map:
-
-```bash
-docker run --rm \
-  -v "$PWD/demo:/data:ro" \
-  -v "$PWD/weights:/models:ro" \
-  -v "$PWD/outputs:/outputs" \
-  vhr-seg:dev-cpu \
-  --model segformer \
-  --raster /data/imagery_demo.tif \
-  --reference /data/reference_demo.gpkg \
-  --weights-dir /models \
-  --output-dir /outputs \
-  --device cpu
-```
-
-The resulting files in `outputs/segformer/` include:
-- `prediction.tif` (Georeferenced GeoTIFF)
-- `prediction.gpkg` (Polygonized GeoPackage)
-- `metrics.json` & `metrics_per_class.csv`
-- `confusion_matrix.csv`
-- `evaluation.png`
-- `run_manifest.json` (Provenance and reproducibility record)

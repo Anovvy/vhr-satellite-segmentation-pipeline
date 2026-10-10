@@ -1,44 +1,25 @@
-# Trained Model Files
+# Model Checkpoints
 
-A weight file stores the learned parameters required for inference. Download the files from the repository's GitHub Release and place them in this folder.
+This directory stores trained deep-learning parameter checkpoints (`.pth`).
 
-## Standard Filenames
+## Standard Checkpoint Files
 
-| Model | Required filename |
-|---|---|
-| U-Net with ResNet34 | `unet_resnet34.pth` |
-| DeepLabV3+ with ResNet50 | `deeplabv3plus_resnet50.pth` |
-| SegFormer with MiT-B0 | `segformer_mit_b0.pth` |
+Official release binaries are cataloged in [`checksums.sha256`](checksums.sha256):
 
-The checkpoints require three RGB input channels and five output channels in the order listed in the [main README](../README.md#class-definitions). IDs `1–4` are the four target classes; ID `0` is the semantic `Unclassified / Other` catch-all rather than background.
+| Model Architecture | Target Filename | SHA-256 Digest |
+|---|---|---|
+| **SegFormer (MiT-B0)** | `segformer_mit_b0.pth` | `b313598c922fc8f53c1a68b1a96dc9ede567488c38b13767191eeeefe71ffea0` |
+| **U-Net (ResNet34)** | `unet_resnet34.pth` | *(Download from GitHub Release)* |
+| **DeepLabV3+ (ResNet50)** | `deeplabv3plus_resnet50.pth` | *(Download from GitHub Release)* |
 
-The training domain consists of dense residential areas in Jakarta. Unfamiliar locations, sensors, resolutions, seasons, or image-processing pipelines require local validation and can produce incorrect classifications.
+## Automatic Verification
 
-## Checkpoint Compatibility
-
-- Renaming a checkpoint does not change its model architecture.
-- A size-mismatch error usually indicates a different architecture, backbone, class count, or library version.
-- The loader accepts a plain PyTorch `state_dict` and common wrappers named `state_dict`, `model_state_dict`, or `model`.
-- Checkpoints should only come from a trusted source.
-
-## File Verification
-
-Linux:
+Verify the integrity of downloaded checkpoints using the containerized doctor:
 
 ```bash
-sha256sum weights/*.pth
+# Windows PowerShell
+.\run.ps1 -Doctor
+
+# Linux / macOS
+./run.sh --doctor
 ```
-
-macOS:
-
-```bash
-shasum -a 256 weights/*.pth
-```
-
-Windows PowerShell:
-
-```powershell
-Get-FileHash weights\*.pth -Algorithm SHA256
-```
-
-Published checksums allow detection of incomplete or modified downloads.
