@@ -1,5 +1,9 @@
 # VHR Satellite Segmentation Pipeline
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Docker](https://img.shields.io/badge/Inference-Docker%20Container-blue.svg)](https://www.docker.com/)
+[![Python](https://img.shields.io/badge/Python-3.11-green.svg)](https://www.python.org/)
+
 Production-ready, fully containerized deep-learning pipeline for urban land-cover segmentation from 30 cm very-high-resolution (VHR) RGB satellite imagery using **U-Net**, **DeepLabV3+**, and **SegFormer**.
 
 <img width="639" height="360" alt="VHR Pipeline Animation" src="https://github.com/user-attachments/assets/5be58630-8c42-4218-b8da-5e2d6a586401" />
@@ -62,6 +66,67 @@ This repository is **100% containerized**. No manual installation of Python, GDA
 ### Prerequisites
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows / macOS) or Docker Engine with Docker Compose (Linux).
 - *(Optional for GPU)*: NVIDIA GPU with NVIDIA Container Toolkit / WSL2 GPU acceleration.
+
+<details>
+<summary><b>Docker Desktop Setup Guide for Windows (Click to expand)</b></summary>
+
+Setting up Docker Desktop on Windows for the first time? Follow these quick steps to get started smoothly:
+
+1. **Verify Virtualization:** Ensure Hardware Virtualization (VT-x / AMD-V) is enabled in your BIOS/UEFI. Check this in Windows Task Manager > **Performance** > **CPU** > **Virtualization: Enabled**.
+2. **Install WSL 2 (Windows Subsystem for Linux):**
+   - Open **PowerShell** as Administrator.
+   - Run:
+     ```powershell
+     wsl --install
+     ```
+   - If WSL is already installed, update it to the latest version:
+     ```powershell
+     wsl --update
+     ```
+   - Restart your computer if prompted.
+   - *Official Reference:* [Microsoft WSL Installation Guide](https://learn.microsoft.com/en-us/windows/wsl/install).
+3. **Download & Install Docker Desktop:**
+   - Download the installer from the [Official Docker Desktop for Windows Guide](https://docs.docker.com/desktop/setup/install/windows-install/).
+   - Run `Docker Desktop Installer.exe` and make sure the option **"Use WSL 2 instead of Hyper-V"** is checked.
+4. **Skip Account Sign-In / Survey (Optional):**
+   - When Docker Desktop launches and prompts you to sign in or create an account, **you do NOT need to create an account** for personal/local usage.
+   - Simply click **"Continue without signing in"** (or "Skip"), then skip the survey.
+5. **Keep Docker Desktop Running:**
+   - Docker Desktop must be running (showing a green whale icon in the Windows taskbar/system tray) whenever you execute AI inference in QGIS.
+   - *Tip:* In Docker Desktop, go to **Settings (Gear Icon) > General** and check **"Start Docker Desktop when you log in"** so it automatically starts in the background without needing manual launch every time.
+
+</details>
+
+<details>
+<summary><b>Docker Desktop Setup Guide for macOS (Click to expand)</b></summary>
+
+Follow these steps to set up Docker Desktop on macOS:
+
+1. **Identify Your Mac Processor:**
+   - Click the Apple logo () in the top-left corner > **About This Mac**.
+   - Check whether your Mac has an **Apple Chip** (M1, M2, M3, M4) or an **Intel Processor**.
+2. **Download & Install Docker Desktop:**
+   - Visit the [Official Docker Desktop for Mac Guide](https://docs.docker.com/desktop/setup/install/mac-install/).
+   - Click **"Mac with Apple chip"** or **"Mac with Intel chip"** according to your hardware.
+   - Double-click the downloaded `Docker.dmg`, then drag and drop the **Docker** icon into your **Applications** folder.
+   - Open **Docker** from Applications (or Spotlight `Cmd + Space`).
+   - When macOS prompts for system permissions, authorize with your Mac password or Touch ID to allow Docker to install its helper tools.
+3. **Skip Account Sign-In / Survey (Optional):**
+   - Click **"Continue without signing in"** (or "Skip") and dismiss the survey. A Docker account is not needed for local usage.
+4. **Enable Rosetta 2 (Recommended for Apple Silicon):**
+   - To ensure compatibility with x86/amd64 containers, install Apple's Rosetta 2 via Terminal:
+     ```bash
+     softwareupdate --install-rosetta
+     ```
+   - In Docker Desktop, go to **Settings (Gear Icon) > General**, and verify that **"Use Rosetta for x86/amd64 emulation on Apple Silicon"** is enabled.
+5. **Keep Docker Desktop Running:**
+   - Docker must be active (look for the whale icon in the top macOS menu bar) before running PalmAI tasks.
+   - *Tip:* In Docker Desktop **Settings > General**, check **"Start Docker Desktop when you log in"**.
+6. **💡 Tip for Apple Silicon (M1/M2/M3/M4) - Apple Metal (MPS) Acceleration:**
+   - Docker on macOS runs Linux containers in CPU mode.
+   - If you want native **Apple Silicon GPU acceleration (Metal Performance Shaders / MPS)** for much faster inference, you can use PalmAI's built-in **Virtualenv backend** instead of Docker! See [Step 2: Configure Inference Backend](#step-2-configure-inference-backend).
+
+</details>
 
 ### 1. Download Checkpoint Weights
 Place the required model checkpoint(s) in `weights/` (e.g. from GitHub Releases):
