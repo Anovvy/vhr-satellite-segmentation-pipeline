@@ -71,9 +71,7 @@ def _class_ids(values) -> np.ndarray:
         mapped = cleaned.map(REFERENCE_CLASS_MAPPING)
         if mapped.isna().any():
             unknown = sorted(set(cleaned[mapped.isna()]))
-            raise ValueError(
-                "Unknown reference class values: " + ", ".join(unknown)
-            )
+            raise ValueError("Unknown reference class values: " + ", ".join(unknown))
         result = mapped.to_numpy(dtype=np.int64)
     if not np.isin(result, list(CLASS_NAMES)).all():
         unknown_ids = sorted(set(result) - set(CLASS_NAMES))
@@ -110,8 +108,7 @@ def rasterize_reference(
     frame = frame[frame.geometry.notna() & ~frame.geometry.is_empty].copy()
     frame["_class_id"] = _class_ids(frame[field])
     pairs = (
-        (geom, int(value))
-        for geom, value in zip(frame.geometry, frame["_class_id"])
+        (geom, int(value)) for geom, value in zip(frame.geometry, frame["_class_id"])
     )
     return rasterize(
         pairs,

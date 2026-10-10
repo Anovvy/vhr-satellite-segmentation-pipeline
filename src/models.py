@@ -135,7 +135,9 @@ def validate_checkpoint(
     except TypeError:
         checkpoint = torch.load(path, map_location="cpu")
     except Exception as exc:
-        raise ValueError(f"Corrupt or unreadable checkpoint file '{path}': {exc}") from exc
+        raise ValueError(
+            f"Corrupt or unreadable checkpoint file '{path}': {exc}"
+        ) from exc
 
     state_dict = _extract_state_dict(checkpoint)
     name = canonical_model_name(expected_model)
@@ -177,7 +179,9 @@ def load_model(
 
     model = build_model(name, num_classes=num_classes, pretrained_encoder=False)
     try:
-        checkpoint = torch.load(weights_path, map_location=resolved_device, weights_only=True)
+        checkpoint = torch.load(
+            weights_path, map_location=resolved_device, weights_only=True
+        )
     except TypeError:  # Compatibility with older PyTorch releases.
         checkpoint = torch.load(weights_path, map_location=resolved_device)
 
@@ -208,4 +212,3 @@ def forward_logits(
             align_corners=False,
         )
     return logits
-

@@ -44,16 +44,26 @@ def check_core_libraries() -> list[dict[str, Any]]:
         try:
             mod = __import__(pkg_name)
             ver = getattr(mod, "__version__", "installed")
-            results.append({"name": display_name, "installed": True, "version": ver, "healthy": True, "optional": optional})
+            results.append(
+                {
+                    "name": display_name,
+                    "installed": True,
+                    "version": ver,
+                    "healthy": True,
+                    "optional": optional,
+                }
+            )
         except ImportError as err:
-            results.append({
-                "name": display_name,
-                "installed": False,
-                "version": None,
-                "healthy": optional,
-                "optional": optional,
-                "error": str(err),
-            })
+            results.append(
+                {
+                    "name": display_name,
+                    "installed": False,
+                    "version": None,
+                    "healthy": optional,
+                    "optional": optional,
+                    "error": str(err),
+                }
+            )
     return results
 
 
@@ -129,13 +139,15 @@ def check_checkpoints(weights_dir: Path | None = None) -> list[dict[str, Any]]:
     for model_key, filename in WEIGHT_FILENAMES.items():
         ckpt_path = wdir / filename
         if not ckpt_path.is_file():
-            results.append({
-                "model": model_key,
-                "filename": filename,
-                "present": False,
-                "status": "MISSING",
-                "healthy": False,
-            })
+            results.append(
+                {
+                    "model": model_key,
+                    "filename": filename,
+                    "present": False,
+                    "status": "MISSING",
+                    "healthy": False,
+                }
+            )
             continue
 
         # Compute file hash
@@ -147,14 +159,18 @@ def check_checkpoints(weights_dir: Path | None = None) -> list[dict[str, Any]]:
 
         expected = manifest.get(filename)
         matches = (digest == expected) if expected else None
-        results.append({
-            "model": model_key,
-            "filename": filename,
-            "present": True,
-            "sha256": digest,
-            "status": "VERIFIED" if matches is True else ("UNVERIFIED_HASH" if matches is False else "PRESENT"),
-            "healthy": matches is not False,
-        })
+        results.append(
+            {
+                "model": model_key,
+                "filename": filename,
+                "present": True,
+                "sha256": digest,
+                "status": "VERIFIED"
+                if matches is True
+                else ("UNVERIFIED_HASH" if matches is False else "PRESENT"),
+                "healthy": matches is not False,
+            }
+        )
     return results
 
 
@@ -172,7 +188,9 @@ def run_doctor(weights_dir: Path | None = None) -> bool:
     libs = check_core_libraries()
     all_libs_ok = True
     for lib in libs:
-        status = "[OK]" if lib["installed"] else ("[INFO]" if lib["optional"] else "[FAIL]")
+        status = (
+            "[OK]" if lib["installed"] else ("[INFO]" if lib["optional"] else "[FAIL]")
+        )
         if not lib["optional"]:
             all_libs_ok = all_libs_ok and lib["installed"]
         ver = lib["version"] or lib.get("error", "missing")
@@ -181,12 +199,20 @@ def run_doctor(weights_dir: Path | None = None) -> bool:
     print("\n[Raster & GIS Support]")
     raster = check_raster_support()
     raster_status = "[OK]" if raster.get("healthy") else "[FAIL]"
-    print(f"  {raster_status:<6} GDAL Version                  : {raster.get('gdal_version', 'N/A')}")
-    print(f"  {raster_status:<6} GTiff Driver & CRS Engine     : {'Supported' if raster.get('healthy') else 'Error'}")
+    print(
+        f"  {raster_status:<6} GDAL Version                  : {raster.get('gdal_version', 'N/A')}"
+    )
+    print(
+        f"  {raster_status:<6} GTiff Driver & CRS Engine     : {'Supported' if raster.get('healthy') else 'Error'}"
+    )
 
     print("\n[Compute Hardware]")
     compute = check_compute_devices()
-    cuda_str = "Available" if compute.get("cuda_available") else "Not available (CPU inference mode)"
+    cuda_str = (
+        "Available"
+        if compute.get("cuda_available")
+        else "Not available (CPU inference mode)"
+    )
     print(f"  {'[OK]':<6} CUDA Device Acceleration      : {cuda_str}")
     if compute.get("devices"):
         for i, dev_name in enumerate(compute["devices"]):

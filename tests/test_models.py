@@ -68,7 +68,10 @@ def test_validate_checkpoint_class_mismatch(tmp_path: Path):
         validate_checkpoint(ckpt_path, "segformer", num_classes=5)
 
 
-@pytest.mark.skipif(not SEGFORMER_WEIGHTS.is_file(), reason="segformer_mit_b0.pth not available in weights/")
+@pytest.mark.skipif(
+    not SEGFORMER_WEIGHTS.is_file(),
+    reason="segformer_mit_b0.pth not available in weights/",
+)
 def test_load_model_real_segformer():
     """Verify loading real segformer_mit_b0.pth checkpoint offline on CPU."""
     model, device = load_model("segformer", SEGFORMER_WEIGHTS, device="cpu")

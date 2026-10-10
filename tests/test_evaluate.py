@@ -141,7 +141,9 @@ def test_rasterize_reference_reprojection(tmp_path: Path):
 
     # Create polygon in EPSG:32748 then transform to EPSG:4326
     geom_utm = box(700005.0, 9299975.0, 700020.0, 9299990.0)
-    gdf_utm = gpd.GeoDataFrame([{"class_id": 2, "geometry": geom_utm}], crs="EPSG:32748")
+    gdf_utm = gpd.GeoDataFrame(
+        [{"class_id": 2, "geometry": geom_utm}], crs="EPSG:32748"
+    )
     gdf_4326 = gdf_utm.to_crs("EPSG:4326")
 
     ref_path = tmp_path / "ref_4326.gpkg"

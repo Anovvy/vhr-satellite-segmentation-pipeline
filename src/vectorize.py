@@ -53,4 +53,3 @@ def vectorize_prediction(
     else:
         raise ValueError("Vector output must use the .gpkg or .shp extension.")
     return output_path
-

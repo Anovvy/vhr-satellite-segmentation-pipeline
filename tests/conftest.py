@@ -39,13 +39,16 @@ class DeterministicFiveClassModel(nn.Module):
             raise ValueError("Either x or pixel_values must be provided.")
         batch_size, _, height, width = tensor.shape
         device = tensor.device
-        logits = torch.zeros((batch_size, self.num_classes, height, width), device=device)
+        logits = torch.zeros(
+            (batch_size, self.num_classes, height, width), device=device
+        )
         grid_x = torch.arange(width, device=device).unsqueeze(0).expand(height, width)
         for class_id in range(self.num_classes):
             mask = (grid_x % self.num_classes) == class_id
             logits[:, class_id, :, :] = torch.where(mask, 10.0, -10.0)
 
         if pixel_values is not None:
+
             class OutputWrapper:
                 def __init__(self, logits_tensor):
                     self.logits = logits_tensor
@@ -102,7 +105,9 @@ def create_synthetic_geotiff(
 def synthetic_raster_32748(tmp_path: Path) -> Path:
     """Standard 128x128 3-band GeoTIFF with UTM CRS (EPSG:32748)."""
     raster_path = tmp_path / "synthetic_32748.tif"
-    return create_synthetic_geotiff(raster_path, width=128, height=128, crs="EPSG:32748")
+    return create_synthetic_geotiff(
+        raster_path, width=128, height=128, crs="EPSG:32748"
+    )
 
 
 @pytest.fixture
@@ -117,7 +122,9 @@ def synthetic_raster_4326(tmp_path: Path) -> Path:
     """Geographic CRS (EPSG:4326) 64x64 3-band GeoTIFF."""
     raster_path = tmp_path / "synthetic_4326.tif"
     transform = Affine(0.00001, 0.0, 106.8, 0.0, -0.00001, -6.2)
-    return create_synthetic_geotiff(raster_path, width=64, height=64, crs="EPSG:4326", transform=transform)
+    return create_synthetic_geotiff(
+        raster_path, width=64, height=64, crs="EPSG:4326", transform=transform
+    )
 
 
 @pytest.fixture
@@ -127,15 +134,50 @@ def synthetic_reference_gpkg(tmp_path: Path) -> Path:
     # 128x128 pixels span: X from 700000.0 to 700038.4, Y from 9300000.0 down to 9299961.6
     polygons = [
         # Class 0: Unclassified / Other
-        Polygon([(700000.0, 9300000.0), (700006.0, 9300000.0), (700006.0, 9299990.0), (700000.0, 9299990.0)]),
+        Polygon(
+            [
+                (700000.0, 9300000.0),
+                (700006.0, 9300000.0),
+                (700006.0, 9299990.0),
+                (700000.0, 9299990.0),
+            ]
+        ),
         # Class 1: Residential
-        Polygon([(700007.0, 9300000.0), (700015.0, 9300000.0), (700015.0, 9299990.0), (700007.0, 9299990.0)]),
+        Polygon(
+            [
+                (700007.0, 9300000.0),
+                (700015.0, 9300000.0),
+                (700015.0, 9299990.0),
+                (700007.0, 9299990.0),
+            ]
+        ),
         # Class 2: Non-residential
-        Polygon([(700016.0, 9300000.0), (700024.0, 9300000.0), (700024.0, 9299990.0), (700016.0, 9299990.0)]),
+        Polygon(
+            [
+                (700016.0, 9300000.0),
+                (700024.0, 9300000.0),
+                (700024.0, 9299990.0),
+                (700016.0, 9299990.0),
+            ]
+        ),
         # Class 3: Grassland
-        Polygon([(700000.0, 9299980.0), (700015.0, 9299980.0), (700015.0, 9299970.0), (700000.0, 9299970.0)]),
+        Polygon(
+            [
+                (700000.0, 9299980.0),
+                (700015.0, 9299980.0),
+                (700015.0, 9299970.0),
+                (700000.0, 9299970.0),
+            ]
+        ),
         # Class 4: Urban Forest
-        Polygon([(700016.0, 9299980.0), (700030.0, 9299980.0), (700030.0, 9299970.0), (700016.0, 9299970.0)]),
+        Polygon(
+            [
+                (700016.0, 9299980.0),
+                (700030.0, 9299980.0),
+                (700030.0, 9299970.0),
+                (700016.0, 9299970.0),
+            ]
+        ),
     ]
     gdf = gpd.GeoDataFrame(
         {

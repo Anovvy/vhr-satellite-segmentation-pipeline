@@ -51,7 +51,9 @@ def test_to_tensor_normalization():
     assert tensor[0, 0, 0, 0].item() == pytest.approx(expected_r, rel=1e-3)
 
 
-def test_predict_raster_standard(synthetic_raster_32748: Path, mock_model, tmp_path: Path):
+def test_predict_raster_standard(
+    synthetic_raster_32748: Path, mock_model, tmp_path: Path
+):
     """Predict standard UTM raster with overlap and assert spatial properties."""
     device = torch.device("cpu")
     pred, metadata = predict_raster(
@@ -109,13 +111,29 @@ def test_predict_raster_parameter_validation(synthetic_raster_32748: Path, mock_
     device = torch.device("cpu")
 
     with pytest.raises(ValueError, match="tile_size must be at least 2"):
-        predict_raster(synthetic_raster_32748, mock_model, "segformer", device, tile_size=1)
+        predict_raster(
+            synthetic_raster_32748, mock_model, "segformer", device, tile_size=1
+        )
 
     with pytest.raises(ValueError, match="stride must be between 1 and tile_size"):
-        predict_raster(synthetic_raster_32748, mock_model, "segformer", device, tile_size=64, stride=0)
+        predict_raster(
+            synthetic_raster_32748,
+            mock_model,
+            "segformer",
+            device,
+            tile_size=64,
+            stride=0,
+        )
 
     with pytest.raises(ValueError, match="stride must be between 1 and tile_size"):
-        predict_raster(synthetic_raster_32748, mock_model, "segformer", device, tile_size=64, stride=65)
+        predict_raster(
+            synthetic_raster_32748,
+            mock_model,
+            "segformer",
+            device,
+            tile_size=64,
+            stride=65,
+        )
 
     with pytest.raises(ValueError, match="input_scale must be greater than zero"):
         predict_raster(

@@ -155,4 +155,3 @@ def save_prediction_raster(
         dst.write(prediction.astype(np.uint8), 1)
         dst.set_band_description(1, "land_cover_class_id")
     return output_path
-

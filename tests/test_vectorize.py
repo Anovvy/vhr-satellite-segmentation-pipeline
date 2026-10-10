@@ -13,7 +13,9 @@ from src.inference import RasterMetadata
 from src.vectorize import vectorize_prediction
 
 
-def test_vectorize_gpkg_and_shp_roundtrip(sample_metadata: RasterMetadata, tmp_path: Path):
+def test_vectorize_gpkg_and_shp_roundtrip(
+    sample_metadata: RasterMetadata, tmp_path: Path
+):
     """Vectorize a prediction with all 5 classes and test rasterize-back roundtrip."""
     # Create simple 128x128 grid where quadrant/bands correspond to classes
     pred = np.zeros((128, 128), dtype=np.uint8)
@@ -24,7 +26,9 @@ def test_vectorize_gpkg_and_shp_roundtrip(sample_metadata: RasterMetadata, tmp_p
     pred[96:, 64:] = 4
 
     gpkg_file = tmp_path / "test_vec.gpkg"
-    out_path = vectorize_prediction(pred, sample_metadata, gpkg_file, include_unclassified=True)
+    out_path = vectorize_prediction(
+        pred, sample_metadata, gpkg_file, include_unclassified=True
+    )
     assert out_path.is_file()
 
     gdf = gpd.read_file(out_path)
@@ -34,7 +38,10 @@ def test_vectorize_gpkg_and_shp_roundtrip(sample_metadata: RasterMetadata, tmp_p
     assert all(gdf.geometry.is_valid)
 
     # Test roundtrip: rasterize the polygons back and compare
-    shapes = ((geom, int(cid)) for geom, cid in zip(gdf.geometry, gdf["class_id"], strict=False))
+    shapes = (
+        (geom, int(cid))
+        for geom, cid in zip(gdf.geometry, gdf["class_id"], strict=False)
+    )
     rasterized_back = rasterize(
         shapes,
         out_shape=(sample_metadata.height, sample_metadata.width),
@@ -45,7 +52,9 @@ def test_vectorize_gpkg_and_shp_roundtrip(sample_metadata: RasterMetadata, tmp_p
     np.testing.assert_array_equal(rasterized_back, pred)
 
 
-def test_vectorize_exclude_unclassified(sample_metadata: RasterMetadata, tmp_path: Path):
+def test_vectorize_exclude_unclassified(
+    sample_metadata: RasterMetadata, tmp_path: Path
+):
     """Ensure class 0 is omitted when include_unclassified=False."""
     pred = np.zeros((64, 64), dtype=np.uint8)
     pred[10:30, 10:30] = 1
@@ -58,7 +67,9 @@ def test_vectorize_exclude_unclassified(sample_metadata: RasterMetadata, tmp_pat
     assert 1 in gdf["class_id"].values
 
 
-def test_vectorize_invalid_extension_raises(sample_metadata: RasterMetadata, tmp_path: Path):
+def test_vectorize_invalid_extension_raises(
+    sample_metadata: RasterMetadata, tmp_path: Path
+):
     """Non-gpkg, non-shp formats must raise ValueError."""
     pred = np.ones((10, 10), dtype=np.uint8)
     with pytest.raises(ValueError, match=r"\.gpkg or \.shp"):

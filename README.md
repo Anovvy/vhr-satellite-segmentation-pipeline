@@ -43,6 +43,14 @@ The classification is saved as a georeferenced GeoTIFF and converted into a GeoP
 
 Prediction-only mode creates a classified-map PNG. Evaluation mode creates ground-truth, prediction, and compatibility panels.
 
+### 6. Containerized batch inference & environment doctor
+
+Separate CPU and NVIDIA GPU Docker containers (`docker/Dockerfile.cpu`, `docker/Dockerfile.gpu`) with an offline-friendly system diagnostic (`--doctor`) for libraries, GDAL/CRS engines, compute devices, and checkpoint verification.
+
+### 7. Geospatial validation & reproducibility provenance
+
+Automated GitHub Actions CI testing spatial geometry, CRS alignment, and confusion-matrix values. Offline SegFormer construction eliminates runtime Hugging Face network calls. Every inference run automatically generates an immutable `run_manifest.json` provenance record.
+
 ## Models
 
 | Model | Backbone | Command name | Weight filename |
@@ -69,19 +77,46 @@ The model contains five output channels. Four thematic targets use IDs `1–4`, 
 vhr-satellite-segmentation-pipeline/
 ├── README.md                          # Project overview
 ├── LICENSE                            
-├── requirements.txt                   
+├── pyproject.toml                     # Ruff and pytest configuration
+├── requirements.txt                   # Baseline dependencies
 ├── .gitignore                         
+├── .dockerignore                      
+│
+├── .github/workflows/                 # GitHub Actions CI/CD
+│   ├── ci.yml                         # Automated lint, geospatial pytest & Docker smoke
+│   └── release-image.yml              # Gated GHCR image delivery for release tags
+│
+├── docker/                            # Production container runtimes
+│   ├── Dockerfile.cpu                 # Optimized CPU inference container
+│   └── Dockerfile.gpu                 # CUDA-accelerated GPU inference container
+│
+├── requirements/                      # Split dependency constraints
+│   ├── requirements-cpu.txt           # CPU wheels with PyTorch CPU index
+│   ├── requirements-gpu.txt           # GPU wheels with CUDA PyTorch index
+│   └── requirements-dev.txt           # Development and testing tools
 │
 ├── scripts/
-│   └── run_demo.py                    # Main command-line
+│   ├── doctor.py                      # Environment and runtime diagnostic
+│   └── run_demo.py                    # Main batch inference CLI
 │
 ├── src/                               # Reusable inference pipeline
 │   ├── __init__.py                    
-│   ├── models.py                      # Model construction and checkpoint loading
-│   ├── inference.py                   # Tiling, padding, prediction, and GeoTIFF export
-│   ├── vectorize.py                   # Classification raster to vector
+│   ├── doctor.py                      # System health check engine
 │   ├── evaluate.py                    # Calculate metrics evaluation
+│   ├── inference.py                   # Tiling, padding, prediction, and GeoTIFF export
+│   ├── models.py                      # Model construction and checkpoint loading
+│   ├── provenance.py                  # Cryptographic run manifest generator
+│   ├── vectorize.py                   # Classification raster to vector
 │   └── visualize.py                   # Prediction and evaluation PNG figures
+│
+├── tests/                             # Geospatial test suite
+│   ├── conftest.py                    # Synthetic GeoTIFF & mock fixtures
+│   ├── test_cli.py                    # CLI parameter validation
+│   ├── test_end_to_end.py             # End-to-end integration pipeline
+│   ├── test_evaluate.py               # Confusion matrix & metrics
+│   ├── test_inference.py              # Spatial padding & georeferencing
+│   ├── test_models.py                 # Offline model building & loading
+│   └── test_vectorize.py              # Vector geometry & roundtrips
 │
 ├── demo/                              # Demonstration assets
 │   ├── imagery_demo.tif               # Demo RGB satellite raster
@@ -89,6 +124,7 @@ vhr-satellite-segmentation-pipeline/
 │   └── README.md                      
 │
 ├── weights/                           # Locations for trained checkpoints
+│   ├── checksums.sha256               # Cryptographic SHA-256 release manifest
 │   ├── unet_resnet34.pth              # U-Net checkpoint
 │   ├── deeplabv3plus_resnet50.pth     # DeepLabV3+ checkpoint
 │   ├── segformer_mit_b0.pth           # SegFormer checkpoint
@@ -113,7 +149,10 @@ vhr-satellite-segmentation-pipeline/
 │   └── train_segformer.py             
 │
 ├── docs/                              # Technical documentation
+│   ├── ci-cd.md                       # CI/CD and security architecture
+│   ├── docker.md                      # Docker container execution guide
 │   ├── methodology.md                 # Methodology detail
+│   ├── reproducibility.md             # Reproducibility & provenance guide
 │   ├── results.md                     # Training and inference result interpretation
 │   └── usage.md                       # Additional commands and input checks
 │
@@ -189,6 +228,14 @@ Download the model files from the repository's GitHub Release and place the file
 
 Only one weight file is required for a single-model run. All three files are required for `--model all`.
 
+### Step 6B: Verify environment and checkpoints (Doctor)
+
+Run the built-in diagnostic tool to ensure that your environment, GDAL raster engine, compute devices, and weights are validated:
+
+```text
+python scripts/run_demo.py --doctor
+```
+
 ### Step 7A: Run the demo with evaluation
 
 ```text
@@ -230,8 +277,9 @@ Default files:
 | `outputs/segformer/prediction.gpkg` | Raw classification polygons and class attributes | 
 | `outputs/segformer/metrics.json` | Overall accuracy, mean IoU, macro scores, and per-class metrics | 
 | `outputs/segformer/metrics_per_class.csv` | Precision, recall, F1-score, IoU, and support for classes `0–4` |
-| `outputs/segformer/confusion_matrix.csv` | Reference class versus predicted class | Spreadsheet application |
+| `outputs/segformer/confusion_matrix.csv` | Reference class versus predicted class |
 | `outputs/segformer/evaluation.png` | Ground truth, prediction, and green/red compatibility map |
+| `outputs/segformer/run_manifest.json` | Provenance manifest with git commit, library versions, parameters, and cryptographic SHA-256 digests |
 
 ### Without reference evaluation
 
@@ -248,6 +296,7 @@ Default files:
 | `outputs/segformer/prediction.tif` | Georeferenced classification raster with class IDs `0–4` |
 | `outputs/segformer/prediction.gpkg` | Raw classification polygons and class attributes | 
 | `outputs/segformer/prediction.png` | Classified-map preview and legend |
+| `outputs/segformer/run_manifest.json` | Provenance manifest with git commit, library versions, parameters, and cryptographic SHA-256 digests |
 
 Metric files and `evaluation.png` are not created without a reference vector.
 
@@ -298,6 +347,72 @@ python scripts/run_demo.py --model segformer --raster "/path/to/image.tif" --ref
 ```
 
 Custom imagery should use RGB bands 1–3, compatible radiometry, and a spatial resolution close to the 30 cm training imagery. Prediction quality outside dense Jakarta-like residential landscapes requires independent checking.
+
+## Docker Batch Inference
+
+The pipeline can run inside containerized environments without installing native geospatial C-libraries on the host.
+
+### Build images
+
+CPU:
+```bash
+docker build -f docker/Dockerfile.cpu -t vhr-seg:dev-cpu .
+```
+
+GPU (CUDA 12.1):
+```bash
+docker build -f docker/Dockerfile.gpu -t vhr-seg:dev-gpu .
+```
+
+### Run inference with Docker
+
+#### Linux / macOS (Bash)
+```bash
+docker run --rm \
+  -v "$PWD/demo:/data:ro" \
+  -v "$PWD/weights:/models:ro" \
+  -v "$PWD/outputs:/outputs" \
+  vhr-seg:dev-cpu \
+  --model segformer \
+  --raster /data/imagery_demo.tif \
+  --weights-dir /models \
+  --output-dir /outputs \
+  --device cpu \
+  --skip-evaluation
+```
+
+#### Windows (PowerShell)
+```powershell
+docker run --rm `
+  -v "${PWD}/demo:/data:ro" `
+  -v "${PWD}/weights:/models:ro" `
+  -v "${PWD}/outputs:/outputs" `
+  vhr-seg:dev-cpu `
+  --model segformer `
+  --raster /data/imagery_demo.tif `
+  --weights-dir /models `
+  --output-dir /outputs `
+  --device cpu `
+  --skip-evaluation
+```
+
+For GPU execution, add `--gpus all` and use `vhr-seg:dev-gpu` with `--device cuda`. See [docs/docker.md](docs/docker.md) for full instructions.
+
+## Automated Testing & CI/CD
+
+Offline geospatial testing asserts actual spatial properties, CRS reprojections, confusion-matrix values, and vectorization roundtrips without requiring pretrained weights or GPU access:
+
+```bash
+# Run geospatial test suite
+python -m pytest -ra -q tests/
+
+# Run code style & formatting checks
+ruff check src/ scripts/ tests/
+ruff format --check src/ scripts/ tests/
+```
+
+- **CI Pipeline**: Evaluated on every pull request and push to `main` across Python 3.10 and 3.11 with container smoke tests. Details in [docs/ci-cd.md](docs/ci-cd.md).
+- **Reproducibility & Provenance**: Cryptographic manifest structure and QGIS verification guide in [docs/reproducibility.md](docs/reproducibility.md).
 
 ## Original Training Reports
 

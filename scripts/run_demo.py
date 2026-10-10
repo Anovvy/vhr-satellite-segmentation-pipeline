@@ -24,7 +24,12 @@ def parse_args() -> argparse.Namespace:
         choices=("unet", "deeplabv3plus", "segformer", "all"),
         help="Model backend to run (default: segformer).",
     )
-    source = parser.add_mutually_exclusive_group(required=True)
+    parser.add_argument(
+        "--doctor",
+        action="store_true",
+        help="Run environment, raster support, and checkpoint diagnostics.",
+    )
+    source = parser.add_mutually_exclusive_group(required=False)
     source.add_argument("--raster", type=Path, help="Input RGB GeoTIFF.")
     source.add_argument(
         "--demo",
@@ -73,9 +78,7 @@ def parse_args() -> argparse.Namespace:
         default=255.0,
         help="Radiometric divisor used before ImageNet normalization.",
     )
-    parser.add_argument(
-        "--device", choices=("auto", "cpu", "cuda"), default="auto"
-    )
+    parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
     parser.add_argument(
         "--vector-format", choices=("gpkg", "shp", "none"), default="gpkg"
     )
@@ -166,6 +169,7 @@ def run_one(
     )
     print(f"[{label}] Raster: {raster_output}")
 
+    output_files: dict[str, Path] = {"raster": raster_output}
     if args.vector_format != "none":
         vector_output = model_dir / f"prediction.{args.vector_format}"
         vectorize_prediction(
@@ -174,6 +178,7 @@ def run_one(
             vector_output,
             include_unclassified=not args.exclude_unclassified_vector,
         )
+        output_files["vector"] = vector_output
         print(f"[{label}] Vector: {vector_output}")
 
     if reference_path:
@@ -184,7 +189,8 @@ def run_one(
             all_touched=args.all_touched,
         )
         metrics, compatibility, _ = evaluate_prediction(prediction, ground_truth)
-        save_metrics(metrics, model_dir)
+        saved = save_metrics(metrics, model_dir)
+        output_files.update(saved)
         print_report(label, metrics)
         figure = create_evaluation_figure(
             ground_truth,
@@ -194,13 +200,39 @@ def run_one(
             label,
             model_dir / "evaluation.png",
         )
+        output_files["evaluation_figure"] = figure
         print(f"[{label}] Evaluation figure: {figure}")
     else:
         figure = create_prediction_figure(
             prediction, label, model_dir / "prediction.png"
         )
+        output_files["prediction_figure"] = figure
         print(f"[{label}] No reference supplied; evaluation skipped.")
         print(f"[{label}] Prediction figure: {figure}")
+
+    # Generate and save reproducibility provenance manifest
+    from src.provenance import generate_run_manifest, save_run_manifest
+
+    params = {
+        "tile_size": args.tile_size,
+        "stride": args.stride,
+        "input_scale": args.input_scale,
+        "vector_format": args.vector_format,
+        "exclude_unclassified_vector": args.exclude_unclassified_vector,
+        "skip_evaluation": args.skip_evaluation or (reference_path is None),
+    }
+    manifest = generate_run_manifest(
+        name,
+        checkpoint,
+        raster_path,
+        metadata,
+        output_files,
+        params,
+        str(device),
+        REPO_ROOT,
+    )
+    manifest_file = save_run_manifest(manifest, model_dir / "run_manifest.json")
+    print(f"[{label}] Provenance manifest: {manifest_file}")
 
     del model
     if torch.cuda.is_available():
@@ -209,6 +241,19 @@ def run_one(
 
 def main() -> int:
     args = parse_args()
+    if args.doctor:
+        from src.doctor import run_doctor
+
+        healthy = run_doctor(weights_dir=args.weights_dir)
+        return 0 if healthy else 1
+
+    if not args.raster and not args.demo:
+        print(
+            "ERROR: One of --raster or --demo is required (or run with --doctor).",
+            file=sys.stderr,
+        )
+        return 2
+
     try:
         raster_path, reference_path = resolve_inputs(args)
         models = (

@@ -24,11 +24,12 @@ def test_cli_help():
 
 
 def test_cli_mutually_exclusive_inputs(monkeypatch):
-    """Passing neither or both --demo and --raster must fail argument parsing."""
+    """Passing neither or both --demo and --raster must fail."""
+    from scripts.run_demo import main
+
     # Neither passed:
     monkeypatch.setattr(sys, "argv", ["run_demo.py"])
-    with pytest.raises(SystemExit):
-        parse_args()
+    assert main() == 2
 
     # Both passed:
     monkeypatch.setattr(sys, "argv", ["run_demo.py", "--demo", "--raster", "test.tif"])
@@ -43,10 +44,19 @@ def test_cli_skip_evaluation_with_reference_raises(monkeypatch, tmp_path: Path):
     monkeypatch.setattr(
         sys,
         "argv",
-        ["run_demo.py", "--raster", "test.tif", "--reference", str(ref_file), "--skip-evaluation"],
+        [
+            "run_demo.py",
+            "--raster",
+            "test.tif",
+            "--reference",
+            str(ref_file),
+            "--skip-evaluation",
+        ],
     )
     args = parse_args()
-    with pytest.raises(ValueError, match="--skip-evaluation cannot be combined with --reference"):
+    with pytest.raises(
+        ValueError, match="--skip-evaluation cannot be combined with --reference"
+    ):
         resolve_inputs(args)
 
 
