@@ -10,7 +10,6 @@ import torch.nn.functional as F
 
 from . import NUM_CLASSES
 
-
 MODEL_ALIASES = {
     "unet": "unet",
     "u-net": "unet",

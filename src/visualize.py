@@ -14,7 +14,6 @@ from matplotlib.colors import ListedColormap
 
 from . import CLASS_NAMES, REFERENCE_NODATA
 
-
 CLASS_COLORS = ("#000000", "#ffff00", "#ff9f1a", "#90ee90", "#006400")
 CLASS_CMAP = ListedColormap(CLASS_COLORS)
 GROUND_TRUTH_CMAP = CLASS_CMAP.with_extremes(bad="#d9d9d9")

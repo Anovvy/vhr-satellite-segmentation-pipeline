@@ -15,7 +15,6 @@ from sklearn.metrics import confusion_matrix, precision_recall_fscore_support
 from . import CLASS_NAMES, REFERENCE_NODATA
 from .inference import RasterMetadata
 
-
 REFERENCE_CLASS_MAPPING = {
     "Unclassified": 0,
     "Unclassified / Other": 0,

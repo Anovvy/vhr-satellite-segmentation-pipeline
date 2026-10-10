@@ -15,7 +15,6 @@ from rasterio.windows import Window
 from . import NUM_CLASSES
 from .models import forward_logits
 
-
 IMAGENET_MEAN = np.asarray((0.485, 0.456, 0.406), dtype=np.float32)
 IMAGENET_STD = np.asarray((0.229, 0.224, 0.225), dtype=np.float32)
 

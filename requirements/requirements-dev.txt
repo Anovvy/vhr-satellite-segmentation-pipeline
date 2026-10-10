@@ -1,0 +1,4 @@
+# Developer and test dependencies
+-r ../requirements.txt
+pytest>=7.4,<10
+ruff>=0.3,<1
