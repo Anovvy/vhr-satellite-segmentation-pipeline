@@ -1,0 +1,38 @@
+FROM python:3.11-slim
+
+# Prevent interactive prompts and set Python runtime flags
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1
+
+# Install minimal OS dependencies for geospatial tools, OpenMP, and SSL
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Create non-root application user and runtime mount targets
+RUN useradd -m -u 1000 appuser && \
+    mkdir -p /data /models /outputs && \
+    chown -R appuser:appuser /app /data /models /outputs
+
+# Install CPU-specific PyTorch wheels and project dependencies
+COPY requirements.txt /app/requirements.txt
+COPY requirements/requirements-cpu.txt /app/requirements/requirements-cpu.txt
+COPY pyproject.toml /app/pyproject.toml
+
+RUN pip install --upgrade pip setuptools wheel && \
+    pip install -r requirements/requirements-cpu.txt
+
+# Copy application runtime code
+COPY src/ /app/src/
+COPY scripts/ /app/scripts/
+
+USER appuser
+
+ENTRYPOINT ["python", "scripts/run_demo.py"]
+CMD ["--help"]

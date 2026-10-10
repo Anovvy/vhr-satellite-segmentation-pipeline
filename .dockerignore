@@ -1,0 +1,24 @@
+# Docker build ignore rules
+.git
+.github
+.venv
+venv
+env
+demo/.venv
+weights/*.pth
+weights/*.pt
+weights/*.ckpt
+outputs/
+raw_data/
+private_data/
+checkpoints/
+runs/
+wandb/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.aux.xml
+*.ovr
+results/figures/*.png
+docs/
