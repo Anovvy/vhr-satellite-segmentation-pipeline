@@ -85,9 +85,11 @@ sha256sum -c weights/checksums.sha256
 Get-FileHash weights\*.pth -Algorithm SHA256
 ```
 
-Or run the built-in diagnostic:
+Or run the built-in diagnostic inside Docker:
 ```bash
-python scripts/run_demo.py --doctor
+./run.sh --doctor          # Linux / macOS
+.\run.ps1 -Doctor          # Windows PowerShell
+docker compose run --rm doctor   # Docker Compose
 ```
 
 ---

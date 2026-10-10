@@ -1,148 +1,215 @@
 # Demo Commands and Advanced Usage
 
-Start with the [installation and demo guide](../README.md#installation-and-demo-guide). All commands below assume an active Python environment, complete demo files, and matching model weights.
+Start with the [Docker Quickstart guide](../README.md#docker-quickstart-recommended). All commands below run entirely inside pre-configured Docker containers—no manual host Python, CUDA, or GDAL environment setup required.
 
-## Run U-Net
+For convenience, cross-platform helper scripts are provided in the repo root:
+- **Linux / macOS**: `./run.sh [args]`
+- **Windows PowerShell**: `.\run.ps1 [args]`
+- **Standard Docker Compose**: `docker compose run --rm cpu [args]`
+
+---
+
+## 1. Run U-Net Demo
 
 ```bash
-python scripts/run_demo.py --model unet --demo
+# Linux / macOS
+./run.sh --model unet --demo
+
+# Windows PowerShell
+.\run.ps1 -Model unet -Demo
+
+# Docker Compose directly
+docker compose run --rm cpu --model unet --demo
 ```
 
-## Run DeepLabV3+
+## 2. Run DeepLabV3+ Demo
 
 ```bash
-python scripts/run_demo.py --model deeplabv3plus --demo
+# Linux / macOS
+./run.sh --model deeplabv3plus --demo
+
+# Windows PowerShell
+.\run.ps1 -Model deeplabv3plus -Demo
+
+# Docker Compose directly
+docker compose run --rm cpu --model deeplabv3plus --demo
 ```
 
-## Run SegFormer
+## 3. Run SegFormer Demo
 
 ```bash
-python scripts/run_demo.py --model segformer --demo
+# Linux / macOS
+./run.sh --model segformer --demo
+
+# Windows PowerShell
+.\run.ps1 -Model segformer -Demo
+
+# Docker Compose directly
+docker compose run --rm cpu --model segformer --demo
 ```
 
-## Run All Models
+## 4. Run All Models in Sequence
 
 ```bash
-python scripts/run_demo.py --model all --demo --output-dir outputs/demo_comparison
+# Linux / macOS
+./run.sh --model all --demo --output-dir /outputs/demo_comparison
+
+# Windows PowerShell
+.\run.ps1 -Model all -Demo -OutputDir outputs/demo_comparison
+
+# Docker Compose directly
+docker compose run --rm cpu --model all --demo --output-dir /outputs/demo_comparison
 ```
 
-The models run one after another. Each model receives a separate output folder.
+The models run one after another. Each model receives a separate output folder inside `outputs/`.
 
-## Run Without a Reference Layer
+---
 
-Reference data is optional. The following command runs SegFormer on the demo image without calculating evaluation metrics:
+## 5. Run Without a Reference Layer
+
+Reference vector data is optional. To run SegFormer on imagery without computing evaluation metrics:
 
 ```bash
-python scripts/run_demo.py --model segformer --demo --skip-evaluation
+# Linux / macOS
+./run.sh --model segformer --demo --skip-evaluation
+
+# Windows PowerShell
+.\run.ps1 -Model segformer -Demo -SkipEvaluation
 ```
 
-For a custom image, omit `--reference`:
+For a custom image, mount the file into `/data` or specify its path inside the container:
 
 ```bash
-python scripts/run_demo.py --model segformer --raster "/path/to/image.tif"
+# Linux / macOS
+docker compose run --rm -v "/host/path/to/raster.tif:/data/custom.tif:ro" cpu \
+  --model segformer --raster /data/custom.tif --skip-evaluation
 ```
 
 Imagery-only runs create `prediction.tif`, the selected vector output, and `prediction.png`. Metric files, a confusion matrix, and `evaluation.png` are created only when a reference vector is supplied.
 
-## Select CPU or CUDA
+---
 
-Automatic device selection is the default. CUDA is selected when available.
+## 6. Select CPU or GPU (CUDA) Execution
 
-CPU:
+Automatic device selection is handled by the container targets:
 
+### CPU Execution (Default)
 ```bash
-python scripts/run_demo.py --model unet --demo --device cpu
+./run.sh --model segformer --demo --device cpu
 ```
 
-CUDA:
+### GPU Execution (NVIDIA CUDA)
+Requires NVIDIA Container Toolkit on Linux or WSL2 on Windows:
 
 ```bash
-python scripts/run_demo.py --model unet --demo --device cuda
+# Linux / macOS
+./run.sh --gpu --model segformer --demo --device cuda
+
+# Windows PowerShell
+.\run.ps1 -Gpu -Model segformer -Demo -Device cuda
+
+# Docker Compose directly
+docker compose run --rm gpu --model segformer --demo --device cuda
 ```
 
-The CUDA command requires a working NVIDIA driver and CUDA-enabled PyTorch installation.
+---
 
-## Create Shapefile Output
+## 7. Vector Output Formats
+
+Generate ESRI Shapefile instead of GeoPackage:
 
 ```bash
-python scripts/run_demo.py --model segformer --demo --vector-format shp
+./run.sh --model segformer --demo --vector-format shp
 ```
 
 Shapefile output consists of several files. Keep `.shp`, `.shx`, `.dbf`, and `.prj` sidecars together.
 
-Skip vector output:
+Skip vector polygonization entirely (raster only):
 
 ```bash
-python scripts/run_demo.py --model segformer --demo --vector-format none
+./run.sh --model segformer --demo --vector-format none
 ```
 
-## Change the Output Folder
+---
+
+## 8. Change the Output Folder
 
 ```bash
-python scripts/run_demo.py --model segformer --demo --output-dir outputs/demo_run_02
+./run.sh --model segformer --demo --output-dir /outputs/demo_run_02
 ```
 
 Use a new folder name to preserve earlier outputs.
 
-## Advanced Settings
+---
 
-The default settings match the refined notebooks.
+## 9. Advanced Settings Reference
+
+The default settings match the refined research notebooks.
 
 | Option | Default | Meaning |
 |---|---:|---|
 | `--tile-size` | 512 | Tile width and height in pixels |
 | `--stride` | 256 | Distance between neighboring tiles |
 | `--input-scale` | 255 | Divisor before ImageNet normalization |
-| `--vector-format` | `gpkg` | Polygon output format |
+| `--vector-format` | `gpkg` | Polygon output format (`gpkg`, `shp`, `none`) |
 | `--all-touched` | Off | Rasterize every pixel touched by a reference polygon |
 | `--exclude-unclassified-vector` | Off | Remove class `0` from polygon output |
-| `--skip-evaluation` | Off | Ignore the demo reference and create predictions only |
+| `--skip-evaluation` | Off | Ignore reference and create predictions only |
 
 Changing tile size, stride, input scaling, or reference rasterization can change model predictions and reported metrics. Use identical settings for model comparison.
 
-## Run a Custom Raster
+---
 
-Custom data is an advanced path outside the one-command demo. A reference vector is optional.
+## 10. Run a Custom Raster
 
-Imagery only:
+Custom data is executed by mounting custom host directories to `/data` in the container:
 
 ```bash
-python scripts/run_demo.py --model segformer --raster "/path/to/image.tif"
+docker run --rm \
+  -v "/path/to/imagery.tif:/data/input.tif:ro" \
+  -v "$PWD/weights:/models:ro" \
+  -v "$PWD/outputs:/outputs" \
+  vhr-seg:dev-cpu \
+  --model segformer \
+  --raster /data/input.tif \
+  --weights-dir /models \
+  --output-dir /outputs \
+  --skip-evaluation
 ```
 
 Imagery with reference evaluation:
 
 ```bash
-python scripts/run_demo.py --model segformer --raster "/path/to/image.tif" --reference "/path/to/reference.gpkg" --reference-field class_id
+docker run --rm \
+  -v "/path/to/imagery.tif:/data/input.tif:ro" \
+  -v "/path/to/reference.gpkg:/data/reference.gpkg:ro" \
+  -v "$PWD/weights:/models:ro" \
+  -v "$PWD/outputs:/outputs" \
+  vhr-seg:dev-cpu \
+  --model segformer \
+  --raster /data/input.tif \
+  --reference /data/reference.gpkg \
+  --reference-field class_id \
+  --weights-dir /models \
+  --output-dir /outputs
 ```
 
 Requirements:
+1. Georeferenced raster with RGB in bands 1–3.
+2. Pixel values compatible with the training preprocessing (0–255).
+3. Valid raster and vector coordinate reference systems (CRS).
+4. For evaluation: reference class IDs from `0` to `4`.
+5. For evaluation: spatial overlap between imagery and reference polygons.
 
-1. a georeferenced raster with RGB in bands 1–3;
-2. pixel values compatible with the training preprocessing;
-3. valid raster and vector coordinate reference systems;
-4. for evaluation, reference class IDs from `0` to `4`;
-5. for evaluation, spatial overlap between imagery and reference polygons.
+---
 
-The original experiment used 30 cm imagery from dense residential areas in Jakarta. Another resolution changes the ground area visible to the model, while a different urban form, sensor, season, or radiometric profile can cause domain-shift errors. The program preserves the supplied grid and does not automatically resample custom inputs to 30 cm. Local reference evaluation is strongly recommended for unfamiliar locations.
+## 11. Reproducibility & Provenance Record
 
-## Reproducibility Record
-
-For each published run, retain:
-
-- the exact command;
-- imagery and reference checksums;
-- checkpoint checksum;
-- `metrics.json`;
-- per-class CSV and confusion matrix;
-- evaluation PNG;
-- installed package versions.
-
-Save the environment after a successful run:
-
-```bash
-python -m pip freeze > environment-lock.txt
-```
+Every run automatically produces a tamper-evident `run_manifest.json` inside the output folder, recording:
+- Exact CLI invocation flags and runtime arguments;
+- SHA-256 checksums of input raster, reference vector, and model weights;
+- Full hardware and library environment snapshot (OS, Python, PyTorch, GDAL, CUDA status);
+- Output file paths and evaluation summary.
 
 ## Metric Scope
 

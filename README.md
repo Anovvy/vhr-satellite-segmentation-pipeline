@@ -49,7 +49,7 @@ Separate CPU and NVIDIA GPU Docker containers (`docker/Dockerfile.cpu`, `docker/
 
 ### 7. Geospatial validation & reproducibility provenance
 
-Automated GitHub Actions CI testing spatial geometry, CRS alignment, and confusion-matrix values. Offline SegFormer construction eliminates runtime Hugging Face network calls. Every inference run automatically generates an immutable `run_manifest.json` provenance record.
+Automated GitHub Actions CI testing spatial geometry, CRS alignment, and confusion-matrix values. Every inference run automatically generates an immutable `run_manifest.json` provenance record.
 
 ## Models
 
@@ -77,6 +77,9 @@ The model contains five output channels. Four thematic targets use IDs `1–4`, 
 vhr-satellite-segmentation-pipeline/
 ├── README.md                          # Project overview
 ├── LICENSE                            
+├── docker-compose.yml                 # Multi-service container orchestration
+├── run.sh                             # Linux/macOS Docker runner script
+├── run.ps1                            # Windows PowerShell Docker runner script
 ├── pyproject.toml                     # Ruff and pytest configuration
 ├── requirements.txt                   # Baseline dependencies
 ├── .gitignore                         
@@ -159,98 +162,68 @@ vhr-satellite-segmentation-pipeline/
 └── outputs/                           # Generated automatically after demo inference
     └── <model_name>/                  
 ```
-## Installation and Demo Guide
+## Quickstart Guide (Docker-Only)
 
-**Visual Studio Code (VS Code) is recommended** for this project. The following guide uses the VS Code interface and its integrated terminal, so a separate terminal application is not required.
+This project is fully containerized. **No manual installation of Python, virtual environments, GDAL, or CUDA is required on the host system.** Everything runs reproducibly inside Docker.
 
-### Step 1: Install the required applications
+### Prerequisites
 
-Install:
+Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows/macOS) or Docker Engine with Docker Compose (Linux). If using an NVIDIA GPU, enable the NVIDIA Container Toolkit / WSL2 GPU support.
 
-1. [Python 3.11](https://www.python.org/downloads/);
-2. [Visual Studio Code](https://code.visualstudio.com/);
-3. the [Python extension for VS Code](https://marketplace.visualstudio.com/items?itemName=ms-python.python).
+### Step 1: Clone the repository
 
-During Python installation on Windows, enable **Add Python to PATH**.
-
-### Step 2: Download the repository
-
-1. Open the GitHub repository.
-2. Select **Code > Download ZIP**.
-3. Extract the ZIP.
-4. Place the extracted folder at a simple location, for example:
-
-```text
-C:\GeoAI\vhr-satellite-segmentation-pipeline
+```bash
+git clone https://github.com/Anovvy/vhr-satellite-segmentation-pipeline.git
+cd vhr-satellite-segmentation-pipeline
 ```
 
-### Step 3: Open the project in VS Code
+### Step 2: Add the trained weights
 
-1. Open VS Code.
-2. Select **File > Open Folder**.
-3. Select the extracted `vhr-satellite-segmentation-pipeline` folder.
-4. Confirm **Trust the authors** when the workspace trust prompt appears.
+Download the model files from the repository's GitHub Release and place the files inside `weights/`:
+- `weights/segformer_mit_b0.pth` (SegFormer)
+- `weights/unet_resnet34.pth` (U-Net)
+- `weights/deeplabv3plus_resnet50.pth` (DeepLabV3+)
 
-The repository files should now appear in the VS Code Explorer panel.
+*(Only one weight file is needed for single-model inference; all three are needed for `--model all`.)*
 
-### Step 4: Create the Python environment
+### Step 3: Verify environment and checkpoints (Doctor)
 
-1. Press `Ctrl + Shift + P`.
-2. Search for **Python: Create Environment**.
-3. Select **Venv**.
-4. Select Python `3.11` as the interpreter.
-5. Select `requirements.txt` if VS Code asks for a dependency file.
-6. Wait until `.venv` appears inside the project folder.
-7. Press `Ctrl + Shift + P` again, select **Python: Select Interpreter**, then choose the interpreter inside `.venv`.
+Run the containerized diagnostic tool to verify the container runtime, GDAL raster engine, compute devices, and weights integrity:
 
-### Step 5: Open the VS Code terminal and install the libraries
+```bash
+# Docker Compose:
+docker compose run --rm doctor
 
-Select **Terminal > New Terminal** from the VS Code menu. The `.venv` environment should activate automatically in the integrated terminal.
-
-Run each command separately:
-
-```text
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+# Or using helper scripts:
+.\run.ps1 --doctor    # Windows PowerShell
+./run.sh --doctor     # Linux / macOS
 ```
 
-For an NVIDIA GPU, install the matching CUDA build of PyTorch from the [official PyTorch installation page](https://pytorch.org/get-started/locally/) before installing `requirements.txt`.
+### Step 4A: Run the demo with evaluation
 
-Check the command-line interface from the same VS Code terminal:
+Process `demo/imagery_demo.tif` and calculate evaluation metrics against `demo/reference_demo.gpkg`:
 
-```text
-python scripts/run_demo.py --help
+```bash
+# CPU inference (Docker Compose):
+docker compose run --rm cpu --model segformer --demo
+
+# GPU inference (Docker Compose with NVIDIA GPU):
+docker compose run --rm gpu --model segformer --demo
+
+# Or using helper scripts:
+.\run.ps1 --model segformer --demo          # Windows PowerShell (CPU)
+.\run.ps1 -Gpu --model segformer --demo     # Windows PowerShell (GPU)
+./run.sh --model segformer --demo           # Linux / macOS (CPU)
+./run.sh --gpu --model segformer --demo      # Linux / macOS (GPU)
 ```
 
-### Step 6: Add the trained weights
+### Step 4B: Run the demo without evaluation (prediction only)
 
-Download the model files from the repository's GitHub Release and place the files inside `weights/` with the standard names shown in the model table.
+This mode uses `demo/imagery_demo.tif` and the model weights, but skips reference rasterization and metric calculations:
 
-Only one weight file is required for a single-model run. All three files are required for `--model all`.
-
-### Step 6B: Verify environment and checkpoints (Doctor)
-
-Run the built-in diagnostic tool to ensure that your environment, GDAL raster engine, compute devices, and weights are validated:
-
-```text
-python scripts/run_demo.py --doctor
+```bash
+docker compose run --rm cpu --model segformer --demo --skip-evaluation
 ```
-
-### Step 7A: Run the demo with evaluation
-
-```text
-python scripts/run_demo.py --model segformer --demo
-```
-
-### Step 7B: Run the demo without evaluation
-
-```text
-python scripts/run_demo.py --model segformer --demo --skip-evaluation
-```
-
-This mode uses `demo/imagery_demo.tif` and the model weight, but does not load `reference_demo.gpkg` or calculate metrics.
-
-CUDA is selected automatically when available. CPU inference remains available but may require more time.
 
 ## Outputs
 
@@ -307,112 +280,88 @@ Existing files with the same names can be replaced during another run. Use `--ou
 U-Net:
 
 ```bash
-python scripts/run_demo.py --model unet --demo
+docker compose run --rm cpu --model unet --demo
 ```
 
 DeepLabV3+:
 
 ```bash
-python scripts/run_demo.py --model deeplabv3plus --demo
+docker compose run --rm cpu --model deeplabv3plus --demo
 ```
 
-All models:
+All models comparison:
 
 ```bash
-python scripts/run_demo.py --model all --demo --output-dir outputs/demo_comparison
+docker compose run --rm cpu --model all --demo --output-dir /outputs/demo_comparison
 ```
 
 All models without evaluation:
 
 ```bash
-python scripts/run_demo.py --model all --demo --skip-evaluation --output-dir outputs/demo_predictions
+docker compose run --rm cpu --model all --demo --skip-evaluation --output-dir /outputs/demo_predictions
 ```
 
-The all-model commands create separate `unet`, `deeplabv3plus`, and `segformer` folders inside the selected output directory.
+The all-model commands create separate `unet`, `deeplabv3plus`, and `segformer` folders inside the selected output directory. *(Windows PowerShell users can use `.\run.ps1 --model unet --demo`, and Linux users can use `./run.sh --model unet --demo`)*.
 
 ## Run Custom Imagery
 
-Reference evaluation remains optional for imagery outside the bundled demo.
+Reference evaluation remains optional for imagery outside the bundled demo. To process custom imagery, bind-mount the host directory containing your GeoTIFF raster into `/data` inside the container:
 
-Imagery only:
+### Imagery only
+
+Linux / macOS:
 
 ```bash
-python scripts/run_demo.py --model segformer --raster "/path/to/image.tif"
+docker compose run --rm \
+  -v "/path/to/my_data:/data:ro" \
+  cpu \
+  --model segformer \
+  --raster /data/image.tif \
+  --output-dir /outputs
 ```
 
-Imagery with a reference vector:
+Windows PowerShell:
+
+```powershell
+docker compose run --rm `
+  -v "C:\path\to\my_data:/data:ro" `
+  cpu `
+  --model segformer `
+  --raster /data/image.tif `
+  --output-dir /outputs
+```
+
+### Imagery with reference evaluation
 
 ```bash
-python scripts/run_demo.py --model segformer --raster "/path/to/image.tif" --reference "/path/to/reference.gpkg" --reference-field class_id
+docker compose run --rm \
+  -v "/path/to/my_data:/data:ro" \
+  cpu \
+  --model segformer \
+  --raster /data/image.tif \
+  --reference /data/reference.gpkg \
+  --reference-field class_id \
+  --output-dir /outputs
 ```
 
 Custom imagery should use RGB bands 1–3, compatible radiometry, and a spatial resolution close to the 30 cm training imagery. Prediction quality outside dense Jakarta-like residential landscapes requires independent checking.
 
-## Docker Batch Inference
-
-The pipeline can run inside containerized environments without installing native geospatial C-libraries on the host.
-
-### Build images
-
-CPU:
-```bash
-docker build -f docker/Dockerfile.cpu -t vhr-seg:dev-cpu .
-```
-
-GPU (CUDA 12.1):
-```bash
-docker build -f docker/Dockerfile.gpu -t vhr-seg:dev-gpu .
-```
-
-### Run inference with Docker
-
-#### Linux / macOS (Bash)
-```bash
-docker run --rm \
-  -v "$PWD/demo:/data:ro" \
-  -v "$PWD/weights:/models:ro" \
-  -v "$PWD/outputs:/outputs" \
-  vhr-seg:dev-cpu \
-  --model segformer \
-  --raster /data/imagery_demo.tif \
-  --weights-dir /models \
-  --output-dir /outputs \
-  --device cpu \
-  --skip-evaluation
-```
-
-#### Windows (PowerShell)
-```powershell
-docker run --rm `
-  -v "${PWD}/demo:/data:ro" `
-  -v "${PWD}/weights:/models:ro" `
-  -v "${PWD}/outputs:/outputs" `
-  vhr-seg:dev-cpu `
-  --model segformer `
-  --raster /data/imagery_demo.tif `
-  --weights-dir /models `
-  --output-dir /outputs `
-  --device cpu `
-  --skip-evaluation
-```
-
-For GPU execution, add `--gpus all` and use `vhr-seg:dev-gpu` with `--device cuda`. See [docs/docker.md](docs/docker.md) for full instructions.
-
 ## Automated Testing & CI/CD
 
-Offline geospatial testing asserts actual spatial properties, CRS reprojections, confusion-matrix values, and vectorization roundtrips without requiring pretrained weights or GPU access:
+Run the entire geospatial test suite inside the container with zero host dependencies:
 
 ```bash
-# Run geospatial test suite
-python -m pytest -ra -q tests/
+# Run test suite inside Docker:
+docker compose run --rm test
 
-# Run code style & formatting checks
-ruff check src/ scripts/ tests/
-ruff format --check src/ scripts/ tests/
+# Or using helper scripts:
+.\run.ps1 --test      # Windows PowerShell
+./run.sh --test       # Linux / macOS
 ```
 
 - **CI Pipeline**: Evaluated on every pull request and push to `main` across Python 3.10 and 3.11 with container smoke tests. Details in [docs/ci-cd.md](docs/ci-cd.md).
 - **Reproducibility & Provenance**: Cryptographic manifest structure and QGIS verification guide in [docs/reproducibility.md](docs/reproducibility.md).
+- **Docker Architecture**: Complete containerization design and GPU setup details in [docs/docker.md](docs/docker.md).
 
 ## Original Training Reports
 

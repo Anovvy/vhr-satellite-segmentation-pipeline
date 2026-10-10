@@ -15,7 +15,55 @@ The containerized system enforces strict separation of concerns:
 
 ---
 
-## 2. Building the Images
+## 2. Recommended: Running via Docker Compose or Helper Scripts
+
+The easiest and officially recommended way to interact with the containerized pipeline is using `docker compose` or the cross-platform runner scripts.
+
+### Using Cross-Platform Helper Scripts
+The repository includes automated runner scripts that handle image building, volume mounting, and command routing:
+
+- **Linux / macOS**: `./run.sh [options]`
+- **Windows PowerShell**: `.\run.ps1 [options]`
+
+#### Check System & Weight Manifest Health:
+```bash
+./run.sh --doctor        # Linux / macOS
+.\run.ps1 -Doctor        # Windows PowerShell
+```
+
+#### Run SegFormer Demo:
+```bash
+./run.sh --model segformer --demo        # Linux / macOS
+.\run.ps1 -Model segformer -Demo        # Windows PowerShell
+```
+
+#### Run All Geospatial Unit Tests:
+```bash
+./run.sh --test          # Linux / macOS
+.\run.ps1 -Test          # Windows PowerShell
+```
+
+### Using Docker Compose Directly
+
+```bash
+# Run doctor check
+docker compose run --rm doctor
+
+# Run test suite
+docker compose run --rm test
+
+# Run CPU inference demo
+docker compose run --rm cpu --model segformer --demo
+
+# Run GPU inference demo (requires NVIDIA Container Toolkit)
+docker compose run --rm gpu --model segformer --demo --device cuda
+```
+
+---
+
+## 3. Building the Images Manually
+
+If not using Docker Compose, you can build images directly:
 
 ### CPU Image
 ```bash
@@ -29,7 +77,7 @@ docker build -f docker/Dockerfile.gpu -t vhr-seg:dev-gpu .
 
 ---
 
-## 3. Running Environment Doctor inside Container
+## 4. Running Environment Doctor via Direct Docker Run
 
 ### Linux / macOS (Bash)
 ```bash
@@ -49,7 +97,7 @@ docker run --rm `
 
 ---
 
-## 4. Running Inference
+## 5. Running Inference via Direct Docker Run
 
 ### CPU Inference Example
 
@@ -117,7 +165,7 @@ docker run --rm --gpus all `
 
 ---
 
-## 5. With Reference Evaluation
+## 6. With Reference Evaluation
 
 To compute accuracy, IoU, confusion matrix, and compatibility map:
 

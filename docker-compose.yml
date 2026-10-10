@@ -1,0 +1,57 @@
+services:
+  cpu:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.cpu
+    image: vhr-seg:dev-cpu
+    volumes:
+      - ./demo:/data:ro
+      - ./demo:/app/demo:ro
+      - ./weights:/models:ro
+      - ./weights:/app/weights:ro
+      - ./outputs:/outputs
+      - ./outputs:/app/outputs
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  gpu:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.gpu
+    image: vhr-seg:dev-gpu
+    volumes:
+      - ./demo:/data:ro
+      - ./demo:/app/demo:ro
+      - ./weights:/models:ro
+      - ./weights:/app/weights:ro
+      - ./outputs:/outputs
+      - ./outputs:/app/outputs
+    environment:
+      - PYTHONUNBUFFERED=1
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  doctor:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.cpu
+    image: vhr-seg:dev-cpu
+    volumes:
+      - ./weights:/models:ro
+    command: ["--doctor", "--weights-dir", "/models"]
+
+  test:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.cpu
+    image: vhr-seg:dev-cpu
+    volumes:
+      - ./demo:/app/demo:ro
+      - ./weights:/app/weights:ro
+      - ./weights:/models:ro
+    entrypoint: ["python", "-m", "pytest", "-ra", "-q", "tests/"]

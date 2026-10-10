@@ -11,6 +11,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
     libgomp1 \
+    libexpat1 \
+    libgl1 \
+    libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -20,17 +23,18 @@ RUN useradd -m -u 1000 appuser && \
     mkdir -p /data /models /outputs && \
     chown -R appuser:appuser /app /data /models /outputs
 
-# Install CPU-specific PyTorch wheels and project dependencies
+# Install CPU-specific PyTorch wheels, dependencies, and testing tools
 COPY requirements.txt /app/requirements.txt
-COPY requirements/requirements-cpu.txt /app/requirements/requirements-cpu.txt
+COPY requirements/ /app/requirements/
 COPY pyproject.toml /app/pyproject.toml
 
 RUN pip install --upgrade pip setuptools wheel && \
-    pip install -r requirements/requirements-cpu.txt
+    pip install -r requirements/requirements-cpu.txt -r requirements/requirements-dev.txt
 
-# Copy application runtime code
+# Copy application runtime code, scripts, and tests
 COPY src/ /app/src/
 COPY scripts/ /app/scripts/
+COPY tests/ /app/tests/
 
 USER appuser
 

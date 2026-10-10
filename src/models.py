@@ -102,6 +102,51 @@ def build_model(
     return SegformerForSemanticSegmentation(config)
 
 
+def _remap_segformer_keys(state_dict: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+    """Ensure compatibility across different Hugging Face Transformers SegFormer key schemes."""
+    if not any("segformer.stages." in k for k in state_dict):
+        return state_dict
+
+    import re
+
+    remapped: dict[str, torch.Tensor] = {}
+    for k, v in state_dict.items():
+        new_k = k.replace("decode_head.linear_projections.", "decode_head.linear_c.")
+        new_k = re.sub(
+            r"segformer\.stages\.(\d+)\.patch_embeddings\.",
+            r"segformer.encoder.patch_embeddings.\1.",
+            new_k,
+        )
+        new_k = re.sub(
+            r"segformer\.stages\.(\d+)\.layer_norm\.",
+            r"segformer.encoder.layer_norm.\1.",
+            new_k,
+        )
+        new_k = re.sub(
+            r"segformer\.stages\.(\d+)\.blocks\.(\d+)\.",
+            r"segformer.encoder.block.\1.\2.",
+            new_k,
+        )
+        new_k = new_k.replace(".layernorm_before.", ".layer_norm_1.")
+        new_k = new_k.replace(".layernorm_after.", ".layer_norm_2.")
+        new_k = new_k.replace(".attention.q_proj.", ".attention.self.query.")
+        new_k = new_k.replace(".attention.k_proj.", ".attention.self.key.")
+        new_k = new_k.replace(".attention.v_proj.", ".attention.self.value.")
+        new_k = new_k.replace(".attention.o_proj.", ".attention.output.dense.")
+        new_k = new_k.replace(
+            ".attention.sequence_reduction.sequence_reduction.",
+            ".attention.self.sr.",
+        )
+        new_k = new_k.replace(
+            ".attention.sequence_reduction.layer_norm.",
+            ".attention.self.layer_norm.",
+        )
+        new_k = new_k.replace(".mlp.fc1.", ".mlp.dense1.")
+        new_k = new_k.replace(".mlp.fc2.", ".mlp.dense2.")
+        remapped[new_k] = v
+    return remapped
+
+
 def _extract_state_dict(checkpoint: Any) -> dict[str, torch.Tensor]:
     if not isinstance(checkpoint, dict):
         raise TypeError("Checkpoint must contain a PyTorch state dictionary.")
@@ -116,7 +161,7 @@ def _extract_state_dict(checkpoint: Any) -> dict[str, torch.Tensor]:
     for key, value in checkpoint.items():
         clean_key = key.removeprefix("module.")
         state_dict[clean_key] = value
-    return state_dict
+    return _remap_segformer_keys(state_dict)
 
 
 def validate_checkpoint(

@@ -53,10 +53,20 @@ def parse_args() -> argparse.Namespace:
         "--reference-field",
         help="Class field in the reference vector; inferred when omitted.",
     )
+    # Auto-detect container mounts when available
+    default_weights = (
+        Path("/models")
+        if Path("/models").is_dir() and any(Path("/models").glob("*.pth"))
+        else REPO_ROOT / "weights"
+    )
+    default_outputs = (
+        Path("/outputs") if Path("/outputs").is_dir() else REPO_ROOT / "outputs"
+    )
+
     parser.add_argument(
         "--weights-dir",
         type=Path,
-        default=REPO_ROOT / "weights",
+        default=default_weights,
         help="Directory containing standardized model filenames.",
     )
     parser.add_argument(
@@ -67,7 +77,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=REPO_ROOT / "outputs",
+        default=default_outputs,
         help="Root output directory (default: outputs/).",
     )
     parser.add_argument("--tile-size", type=int, default=512)
@@ -100,8 +110,22 @@ def resolve_inputs(args: argparse.Namespace) -> tuple[Path, Path | None]:
         raise ValueError("--skip-evaluation cannot be combined with --reference.")
 
     if args.demo:
-        raster = REPO_ROOT / "demo" / "imagery_demo.tif"
-        reference = REPO_ROOT / "demo" / "reference_demo.gpkg"
+        # Search both repository relative path and container standard mount /data
+        candidates_raster = [
+            REPO_ROOT / "demo" / "imagery_demo.tif",
+            Path("/data/imagery_demo.tif"),
+        ]
+        candidates_reference = [
+            REPO_ROOT / "demo" / "reference_demo.gpkg",
+            Path("/data/reference_demo.gpkg"),
+        ]
+        raster = next(
+            (p for p in candidates_raster if p.is_file()), candidates_raster[0]
+        )
+        reference = next(
+            (p for p in candidates_reference if p.is_file()), candidates_reference[0]
+        )
+
         required = (raster,) if args.skip_evaluation else (raster, reference)
         missing = [path for path in required if not path.is_file()]
         if missing:
