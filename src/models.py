@@ -80,15 +80,26 @@ def build_model(
             classes=num_classes,
         )
 
-    from transformers import SegformerForSemanticSegmentation
+    from transformers import SegformerConfig, SegformerForSemanticSegmentation
 
-    # The original experiment used the pretrained MiT-B0 configuration. The
-    # complete project checkpoint is loaded after construction.
-    return SegformerForSemanticSegmentation.from_pretrained(
-        "nvidia/mit-b0",
+    # Offline construction of SegFormer MiT-B0 architecture.
+    # Matches the exact configuration used during experiment training without
+    # requiring runtime internet access to Hugging Face Hub.
+    config = SegformerConfig(
         num_labels=num_classes,
-        ignore_mismatched_sizes=True,
+        num_channels=3,
+        num_encoder_blocks=4,
+        depths=[2, 2, 2, 2],
+        sr_ratios=[8, 4, 2, 1],
+        hidden_sizes=[32, 64, 160, 256],
+        patch_sizes=[7, 3, 3, 3],
+        strides=[4, 2, 2, 2],
+        num_attention_heads=[1, 2, 5, 8],
+        mlp_ratios=[4, 4, 4, 4],
+        decoder_hidden_size=256,
+        semantic_loss_ignore_index=255,
     )
+    return SegformerForSemanticSegmentation(config)
 
 
 def _extract_state_dict(checkpoint: Any) -> dict[str, torch.Tensor]:
@@ -108,6 +119,50 @@ def _extract_state_dict(checkpoint: Any) -> dict[str, torch.Tensor]:
     return state_dict
 
 
+def validate_checkpoint(
+    weights_path: str | Path,
+    expected_model: str,
+    *,
+    num_classes: int = NUM_CLASSES,
+) -> dict[str, Any]:
+    """Validate checkpoint presence, readable state_dict, and compatible class head."""
+    path = Path(weights_path)
+    if not path.is_file():
+        raise FileNotFoundError(f"Checkpoint not found: {path}")
+
+    try:
+        checkpoint = torch.load(path, map_location="cpu", weights_only=True)
+    except TypeError:
+        checkpoint = torch.load(path, map_location="cpu")
+    except Exception as exc:
+        raise ValueError(f"Corrupt or unreadable checkpoint file '{path}': {exc}") from exc
+
+    state_dict = _extract_state_dict(checkpoint)
+    name = canonical_model_name(expected_model)
+
+    if name == "segformer":
+        head_weight = state_dict.get("decode_head.classifier.weight")
+        if head_weight is not None and head_weight.shape[0] != num_classes:
+            raise ValueError(
+                f"Checkpoint class mismatch: expected {num_classes} classes, "
+                f"found {head_weight.shape[0]} in {path}"
+            )
+    elif name in {"unet", "deeplabv3plus"}:
+        head_weight = state_dict.get("segmentation_head.0.weight")
+        if head_weight is not None and head_weight.shape[0] != num_classes:
+            raise ValueError(
+                f"Checkpoint class mismatch: expected {num_classes} classes, "
+                f"found {head_weight.shape[0]} in {path}"
+            )
+
+    return {
+        "model": name,
+        "weights_path": path,
+        "keys_count": len(state_dict),
+        "num_classes": num_classes,
+    }
+
+
 def load_model(
     model_name: str,
     weights_path: str | Path,
@@ -118,15 +173,13 @@ def load_model(
     """Construct a model, load its state dictionary, and switch to eval mode."""
     name = canonical_model_name(model_name)
     resolved_device = resolve_device(device) if isinstance(device, str) else device
-    path = Path(weights_path)
-    if not path.is_file():
-        raise FileNotFoundError(f"Checkpoint not found: {path}")
+    validate_checkpoint(weights_path, name, num_classes=num_classes)
 
     model = build_model(name, num_classes=num_classes, pretrained_encoder=False)
     try:
-        checkpoint = torch.load(path, map_location=resolved_device, weights_only=True)
+        checkpoint = torch.load(weights_path, map_location=resolved_device, weights_only=True)
     except TypeError:  # Compatibility with older PyTorch releases.
-        checkpoint = torch.load(path, map_location=resolved_device)
+        checkpoint = torch.load(weights_path, map_location=resolved_device)
 
     model.load_state_dict(_extract_state_dict(checkpoint), strict=True)
     model.to(resolved_device)
