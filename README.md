@@ -59,18 +59,69 @@ vhr-satellite-segmentation-pipeline/
 
 ---
 
-## Quickstart Guide (Docker-Only)
+## Quickstart Guide
 
-This repository is **100% containerized**. No manual installation of Python, GDAL, CUDA, or virtual environments (`.venv`) is required on the host system.
+This repository is **100% containerized**. You do **not** need to manually install Python, virtual environments, GDAL, or CUDA on your host system. Everything runs inside Docker.
 
-### Prerequisites
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows / macOS) or Docker Engine with Docker Compose (Linux).
-- *(Optional for GPU)*: NVIDIA GPU with NVIDIA Container Toolkit / WSL2 GPU acceleration.
+---
+
+### Step 1: Open Your Terminal
+
+All commands in this guide are run in a command-line terminal:
+
+- **Windows:** Press `Win + S`, type **PowerShell** (or **Windows Terminal**), and press `Enter`.
+- **macOS:** Press `Cmd + Space`, type **Terminal**, and press `Enter`.
+- **Linux:** Open your preferred terminal (e.g. `Ctrl + Alt + T`).
+- **VS Code Users (Any OS):** Open VS Code and press `` Ctrl + ` `` (Control + Backtick) to open the built-in terminal.
+
+---
+
+### Step 2: Clone This Repository from GitHub
+
+In your terminal, copy (clone) this repository to your local machine:
+
+```bash
+git clone https://github.com/Anovvy/vhr-satellite-segmentation-pipeline.git
+```
+
+> [!TIP]
+> **Don't have Git installed?** You can alternatively download the code as a ZIP file: go to the [GitHub Repository page](https://github.com/Anovvy/vhr-satellite-segmentation-pipeline), click the green **Code** button, choose **Download ZIP**, and extract it into a folder on your computer.
+
+---
+
+### Step 3: Navigate (`cd`) into the Project Directory
+
+Before executing any commands, your terminal must be inside the project folder. Use the `cd` (*Change Directory*) command:
+
+```bash
+cd vhr-satellite-segmentation-pipeline
+```
+
+#### How to verify you are in the right directory:
+- **Windows (PowerShell):** Check your prompt line or run `pwd`. It should end in `\vhr-satellite-segmentation-pipeline`:
+  ```powershell
+  pwd
+  ```
+- **macOS / Linux:** Run `pwd`:
+  ```bash
+  pwd
+  ```
+
+> [!IMPORTANT]
+> Always make sure your terminal path is inside `vhr-satellite-segmentation-pipeline` before executing any of the scripts or Docker commands in the steps below!
+
+---
+
+### Step 4: Ensure Docker Desktop is Running
+
+Make sure **Docker Desktop** is installed and actively running on your computer:
+- Download: [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows / macOS) or Docker Engine with Docker Compose (Linux).
+- Verify the Docker icon (whale) is visible and running in your system tray (Windows) or top menu bar (macOS).
 
 <details>
 <summary><b>Docker Desktop Setup Guide for Windows (Click to expand)</b></summary>
 
-Setting up Docker Desktop on Windows for the first time? Follow these quick steps to get started smoothly:
+Setting up Docker Desktop on Windows for the first time? Follow these quick steps:
 
 1. **Verify Virtualization:** Ensure Hardware Virtualization (VT-x / AMD-V) is enabled in your BIOS/UEFI. Check this in Windows Task Manager > **Performance** > **CPU** > **Virtualization: Enabled**.
 2. **Install WSL 2 (Windows Subsystem for Linux):**
@@ -92,7 +143,7 @@ Setting up Docker Desktop on Windows for the first time? Follow these quick step
    - When Docker Desktop launches and prompts you to sign in or create an account, **you do NOT need to create an account** for personal/local usage.
    - Simply click **"Continue without signing in"** (or "Skip"), then skip the survey.
 5. **Keep Docker Desktop Running:**
-   - Docker Desktop must be running (showing a green whale icon in the Windows taskbar/system tray) whenever you execute AI inference in QGIS.
+   - Docker Desktop must be running (showing a green whale icon in the Windows taskbar/system tray) whenever you execute pipeline inference or tests in this repository.
    - *Tip:* In Docker Desktop, go to **Settings (Gear Icon) > General** and check **"Start Docker Desktop when you log in"** so it automatically starts in the background without needing manual launch every time.
 
 </details>
@@ -120,50 +171,79 @@ Follow these steps to set up Docker Desktop on macOS:
      ```
    - In Docker Desktop, go to **Settings (Gear Icon) > General**, and verify that **"Use Rosetta for x86/amd64 emulation on Apple Silicon"** is enabled.
 5. **Keep Docker Desktop Running:**
-   - Docker must be active (look for the whale icon in the top macOS menu bar) before running PalmAI tasks.
+   - Docker must be active (look for the whale icon in the top macOS menu bar) before running segmentation pipeline tasks.
    - *Tip:* In Docker Desktop **Settings > General**, check **"Start Docker Desktop when you log in"**.
-6. **💡 Tip for Apple Silicon (M1/M2/M3/M4) - Apple Metal (MPS) Acceleration:**
-   - Docker on macOS runs Linux containers in CPU mode.
-   - If you want native **Apple Silicon GPU acceleration (Metal Performance Shaders / MPS)** for much faster inference, you can use PalmAI's built-in **Virtualenv backend** instead of Docker! See [Step 2: Configure Inference Backend](#step-2-configure-inference-backend).
 
 </details>
 
-### 1. Download Checkpoint Weights
-Place the required model checkpoint(s) in `weights/` (e.g. from GitHub Releases):
-- `weights/segformer_mit_b0.pth`
+---
 
-### 2. Verify System & Checkpoint Health
-Run the built-in diagnostic doctor to verify container runtime, GDAL raster drivers, and checkpoint integrity:
+### Step 5: Download Model Weights
+
+Download the pre-trained model weights from the repository's [GitHub Releases](https://github.com/Anovvy/vhr-satellite-segmentation-pipeline/releases) and place the `.pth` file into the `weights/` folder:
+
+- **Target file:** `weights/segformer_mit_b0.pth`
+
+*(The folder `weights/` is already present in this repository. You can simply drag and drop the downloaded `.pth` file into it using your File Explorer on Windows or Finder on macOS).*
+
+---
+
+### Step 6: Verify System & Checkpoint Health (Doctor)
+
+Run the built-in diagnostic doctor. This automatically tests the container environment, GDAL raster drivers, and checkpoint integrity:
 
 ```bash
-# Windows PowerShell
+# Windows (PowerShell)
 .\run.ps1 -Doctor
 
-# Linux / macOS
+# Linux / macOS (Terminal)
 ./run.sh --doctor
 
-# Standard Docker Compose
+# Standard Docker Compose (Any OS)
 docker compose run --rm doctor
 ```
 
-### 3. Run Batch Inference Demo
+> [!NOTE]
+> When successful, the doctor diagnostic check will report:  
+> `Doctor status: HEALTHY (Environment is ready for execution)`
+
+---
+
+### Step 7: Run the Segmentation Demo
+
+Execute the full segmentation pipeline on the included 30 cm satellite demo image (`demo/imagery_demo.tif`) with spatial reference evaluation:
 
 ```bash
-# Run SegFormer demo with spatial reference evaluation (CPU)
-.\run.ps1 -Model segformer -Demo          # Windows PowerShell
-./run.sh --model segformer --demo         # Linux / macOS
+# Windows (PowerShell) - CPU
+.\run.ps1 -Model segformer -Demo
 
-# Run with NVIDIA GPU acceleration (CUDA)
+# Linux / macOS (Terminal) - CPU
+./run.sh --model segformer --demo
+
+# With NVIDIA GPU Acceleration (Optional)
 .\run.ps1 -Gpu -Model segformer -Demo     # Windows PowerShell
 ./run.sh --gpu --model segformer --demo    # Linux / macOS
 ```
 
-### 4. Run Test Suite
-Validate geospatial geometry handling, CRS alignment, and model construction:
+> [!NOTE]
+> On the very first run, Docker will automatically build the container image. This takes a few minutes on the initial run and is cached for near-instant startup on subsequent runs.
 
+---
+
+### Step 8: View the Results!
+
+Once completed, all generated output files are saved directly to your host machine in the `outputs/segformer/` folder:
+
+- `prediction.tif` — Georeferenced raster classification GeoTIFF (can be opened in QGIS, ArcGIS, or raster viewers).
+- `prediction.gpkg` — Vector polygons of segmented urban land cover.
+- `evaluation.png` — Visual side-by-side comparison of Ground Truth, Prediction, and Compatibility error map.
+- `metrics.json` & `confusion_matrix.csv` — Accuracy, IoU, and F1 reports.
+- `run_manifest.json` — Cryptographic provenance and reproducibility audit record.
+
+*(Optional)* To test all 29 geospatial unit tests in the container:
 ```bash
-.\run.ps1 -Test                           # Windows PowerShell
-./run.sh --test                           # Linux / macOS
+.\run.ps1 -Test     # Windows PowerShell
+./run.sh --test     # Linux / macOS
 ```
 
 ---
@@ -182,7 +262,8 @@ Every completed run writes standardized outputs to `outputs/<model_name>/` on th
 | **Diagnostic Plot** | `evaluation.png` | PNG | Visual comparison: Ground Truth, Prediction, and Compatibility Map |
 | **Audit Provenance** | `run_manifest.json` | JSON | Cryptographic audit record (SHA-256 hashes, CLI flags, library versions) |
 
-*Note: For imagery-only runs (`--skip-evaluation`), evaluation figures and CSV reports are omitted, while `prediction.png` is generated.*
+> [!NOTE]
+> For imagery-only runs (`--skip-evaluation`), evaluation figures and CSV reports are omitted, while `prediction.png` is generated.
 
 ---
 
