@@ -102,7 +102,9 @@ def build_model(
     return SegformerForSemanticSegmentation(config)
 
 
-def _remap_segformer_keys(state_dict: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+def _remap_segformer_keys(
+    state_dict: dict[str, torch.Tensor],
+) -> dict[str, torch.Tensor]:
     """Ensure compatibility across different Hugging Face Transformers SegFormer key schemes."""
     if not any("segformer.stages." in k for k in state_dict):
         return state_dict
