@@ -6,7 +6,7 @@
 
 Production-ready, fully containerized deep-learning pipeline for urban land-cover segmentation from 30 cm very-high-resolution (VHR) RGB satellite imagery using **U-Net**, **DeepLabV3+**, and **SegFormer**.
 
-<img width="639" height="360" alt="VHR Pipeline Animation" src="https://github.com/user-attachments/assets/5be58630-8c42-4218-b8da-5e2d6a586401" />
+<img width="639" height="360" alt="VHR Pipeline Animation" src="docs/assets/vhr_demo.webp" />
 
 ---
 
